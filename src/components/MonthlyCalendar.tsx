@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { addMonths, format, isSameDay, isSameMonth, subMonths } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Building2, CalendarRange, ChevronLeft, ChevronRight, Layers3, Search, UserRound, X } from "lucide-react";
+import { Building2, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, Layers3, Search, UserRound, X } from "lucide-react";
 import type { JoinedSchedule, SheetData } from "@/types";
 import { formatDateKey, formatKoreanDate, getKoreanDayOfWeek, getKstNow, getMonthCalendarRange, getMonthRange, parseDate } from "@/lib/dateUtils";
 import { getClosuresForDate, isRoomClosed } from "@/lib/closureUtils";
@@ -89,6 +89,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
   const [category, setCategory] = useState("all");
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
   const [query, setQuery] = useState("");
+  const [showDailyDetails, setShowDailyDetails] = useState(false);
   const [showMonthFlow, setShowMonthFlow] = useState(false);
   const calendarRange = getMonthCalendarRange(baseDate);
   const monthRange = getMonthRange(baseDate);
@@ -159,7 +160,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
   });
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
+    <section className={cn("grid gap-6", showDailyDetails ? "xl:grid-cols-[1fr_380px]" : "")}>
       <div className="space-y-6">
         {/* Month Switcher Card */}
         <div className="rounded-[24px] bg-white p-6 shadow-toss border-0">
@@ -214,6 +215,33 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
           subtitle={`${format(baseDate, "yyyy년 M월", { locale: ko })} · 강의실/강사별 오전·오후·저녁 배정 흐름`}
         />
 
+        <div className="rounded-[24px] bg-white p-5 shadow-toss border-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-lg font-black tracking-tight text-toss-gray-primary">일자별 상세 보기</h3>
+              <p className="mt-1 text-sm font-semibold text-toss-gray-secondary">
+                월간 운영 지도만 먼저 보고, 날짜별 카드와 달력은 필요할 때만 펼칩니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDailyDetails((current) => !current)}
+              className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-toss-gray-primary px-4 py-3 text-sm font-black text-white transition hover:bg-toss-gray-secondary"
+              aria-expanded={showDailyDetails}
+            >
+              {showDailyDetails ? "상세 닫기" : "상세 열기"}
+              <ChevronDown className={cn("h-4 w-4 transition-transform", showDailyDetails ? "rotate-180" : "")} aria-hidden="true" />
+            </button>
+          </div>
+          {!showDailyDetails ? (
+            <p className="mt-4 rounded-[18px] bg-toss-bg p-4 text-sm font-bold text-toss-gray-secondary">
+              날짜별 상세 목록은 접어두었습니다. 한 달 흐름은 위 운영 지도에서 먼저 확인하세요.
+            </p>
+          ) : null}
+        </div>
+
+        {showDailyDetails ? (
+        <>
         {/* Monthly Slot Overview */}
         <div className="rounded-[24px] bg-white p-6 shadow-toss border-0">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -570,9 +598,12 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
             })}
           </div>
         </div>
+        </>
+        ) : null}
       </div>
 
       {/* Selected Day Detail Sidebar */}
+      {showDailyDetails ? (
       <aside className="rounded-[24px] bg-white p-6 shadow-toss border-0 xl:sticky xl:top-[100px] xl:self-start transition-all duration-300">
         <div className="flex items-start justify-between gap-3 border-b border-toss-border pb-4">
           <div>
@@ -624,6 +655,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
           ))}
         </div>
       </aside>
+      ) : null}
     </section>
   );
 }

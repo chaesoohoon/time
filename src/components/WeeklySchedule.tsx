@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { addWeeks, format, isSameDay, subWeeks } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Building2, CalendarDays, ChevronLeft, ChevronRight, Filter, RotateCcw, UserRound } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Filter, RotateCcw, UserRound } from "lucide-react";
 import type { JoinedSchedule, SheetData } from "@/types";
 import { isRoomClosed } from "@/lib/closureUtils";
 import { formatDateKey, getKoreanDayOfWeek, getKstNow, getWeekRange } from "@/lib/dateUtils";
@@ -64,6 +64,7 @@ export default function WeeklySchedule({ data }: WeeklyScheduleProps) {
   const [targetId, setTargetId] = useState("all");
   const [category, setCategory] = useState("all");
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
+  const [showDailyDetails, setShowDailyDetails] = useState(false);
   const week = getWeekRange(baseDate);
 
   const categories = useMemo(() => ["all", ...Array.from(new Set(data.courses.map((course) => course.category || "기타")))], [data.courses]);
@@ -191,16 +192,33 @@ export default function WeeklySchedule({ data }: WeeklyScheduleProps) {
         subtitle={`${format(week.start, "M월 d일", { locale: ko })} - ${format(week.end, "M월 d일", { locale: ko })} · 강의실/강사별 오전·오후·저녁 배정 흐름`}
       />
 
-      {weeklySchedules.length === 0 ? (
-        <EmptyState title="이번 주 조건에 맞는 수업이 없습니다." description="기준 또는 시간대 필터를 조정해 주세요." />
-      ) : null}
+      <div className="rounded-[24px] bg-white p-5 shadow-toss">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-black tracking-tight text-toss-gray-primary">날짜별 상세 카드</h3>
+            <p className="mt-1 text-sm font-semibold text-toss-gray-secondary">필요할 때만 요일별 수업 카드를 펼쳐서 확인합니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDailyDetails((current) => !current)}
+            className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-toss-gray-primary px-4 py-3 text-sm font-black text-white transition hover:bg-toss-gray-secondary"
+            aria-expanded={showDailyDetails}
+          >
+            {showDailyDetails ? "상세 닫기" : "상세 열기"}
+            <ChevronDown className={cn("h-4 w-4 transition-transform", showDailyDetails ? "rotate-180" : "")} aria-hidden="true" />
+          </button>
+        </div>
 
-      <div>
-        <h3 className="text-lg font-black tracking-tight text-toss-gray-primary">날짜별 상세 카드</h3>
-        <p className="mt-1 text-sm font-semibold text-toss-gray-secondary">필터 조건에 맞는 수업을 요일별로 확인합니다.</p>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-7">
+        {!showDailyDetails ? (
+          <p className="mt-4 rounded-[18px] bg-toss-bg p-4 text-sm font-bold text-toss-gray-secondary">
+            현재는 주간 운영 지도만 표시 중입니다. 날짜별 전체 카드는 필요할 때만 열어 화면을 가볍게 봅니다.
+          </p>
+        ) : weeklySchedules.length === 0 ? (
+          <div className="mt-5">
+            <EmptyState title="이번 주 조건에 맞는 수업이 없습니다." description="기준 또는 시간대 필터를 조정해 주세요." />
+          </div>
+        ) : (
+      <div className="mt-5 grid gap-4 xl:grid-cols-7">
         {week.dates.map((date) => {
           const dayKey = formatDateKey(date);
           const isToday = isSameDay(date, getKstNow());
@@ -260,6 +278,8 @@ export default function WeeklySchedule({ data }: WeeklyScheduleProps) {
             </section>
           );
         })}
+      </div>
+        )}
       </div>
     </section>
   );
