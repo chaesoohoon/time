@@ -328,6 +328,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
         <select
           value={targetId}
           onChange={(event) => setTargetId(event.target.value)}
+          aria-label={mode === "room" ? "강의실 선택" : "강사 선택"}
           className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
         >
           <option value="all">{mode === "room" ? "전체 강의실" : "전체 강사"}</option>
@@ -351,9 +352,13 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">빈 기간</span>
           {visibleCourses.slice(0, 12).map((course) => (
-            <span key={course.courseId} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-toss-gray-secondary">
+            <span
+              key={course.courseId}
+              className="inline-flex max-w-[260px] items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-toss-gray-secondary"
+              title={course.courseName}
+            >
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: course.color }} />
-              {course.courseName}
+              <span className="truncate">{course.courseName}</span>
             </span>
           ))}
           {visibleCourses.length > 12 ? (
@@ -378,7 +383,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
             {visibleLanes.map((lane) => {
               const packedSegments = packSegments(lane.segments);
               const rowCount = Math.max(1, Math.max(...packedSegments.map((segment) => segment.row + 1), 0));
-              const timelineHeight = 64 + rowCount * 42;
+              const timelineHeight = 104 + rowCount * 46;
 
               return (
                 <article key={lane.id} className="rounded-[22px] bg-white p-4 shadow-sm ring-1 ring-toss-border">
@@ -441,7 +446,8 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
 
                           {packedSegments.map((segment) => {
                             const { left, width } = positionInYear(segment.start, segment.end, year.start, year.end);
-                            const top = 80 + segment.row * 42;
+                            const top = 84 + segment.row * 46;
+                            const label = width < 10 ? `${formatShortDate(segment.start)}-${formatShortDate(segment.end)}` : segment.courseName;
                             return (
                               <div
                                 key={segment.id}
@@ -454,7 +460,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
                                 }}
                                 title={`${segment.courseName} · ${formatDateKey(segment.start)}-${formatDateKey(segment.end)} · ${segment.details.join(", ")}`}
                               >
-                                <span className="truncate">{segment.courseName}</span>
+                                <span className="truncate">{label}</span>
                               </div>
                             );
                           })}

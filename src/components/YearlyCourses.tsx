@@ -281,6 +281,7 @@ export default function YearlyCourses({ data }: YearlyCoursesProps) {
               <select
                 value={targetId}
                 onChange={(event) => setTargetId(event.target.value)}
+                aria-label={mode === "instructor" ? "강사 선택" : mode === "room" ? "강의실 선택" : "과정 선택"}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400"
               >
                 <option value="all">{mode === "instructor" ? "전체 강사" : mode === "room" ? "전체 강의실" : "전체 과정"}</option>
@@ -293,6 +294,7 @@ export default function YearlyCourses({ data }: YearlyCoursesProps) {
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
+                aria-label="분야 선택"
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400"
               >
                 {categories.map((item) => (
@@ -304,6 +306,7 @@ export default function YearlyCourses({ data }: YearlyCoursesProps) {
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
+                aria-label="상태 선택"
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400"
               >
                 {statuses.map((item) => (
@@ -315,6 +318,7 @@ export default function YearlyCourses({ data }: YearlyCoursesProps) {
               <select
                 value={slotFilter}
                 onChange={(event) => setSlotFilter(event.target.value as SlotFilter)}
+                aria-label="시간대 선택"
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400"
               >
                 <option value="all">전체 시간대</option>

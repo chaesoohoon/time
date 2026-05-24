@@ -7,12 +7,12 @@ type EmptyStateProps = {
 
 export default function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-        <Inbox className="h-6 w-6" />
+    <div className="rounded-[24px] border border-dashed border-toss-border bg-white p-8 text-center shadow-sm" role="status">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[18px] bg-toss-bg text-toss-gray-tertiary">
+        <Inbox className="h-6 w-6" aria-hidden="true" />
       </div>
-      <h3 className="mt-4 text-lg font-semibold text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <h3 className="mt-4 text-lg font-black text-toss-gray-primary">{title}</h3>
+      <p className="mt-2 text-sm font-semibold text-toss-gray-secondary">{description}</p>
     </div>
   );
 }

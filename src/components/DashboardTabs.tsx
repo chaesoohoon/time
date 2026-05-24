@@ -76,8 +76,12 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
 
   return (
     <div className="space-y-6">
-      <nav className="sticky top-4 z-20 -mx-3 overflow-x-auto px-3 md:overflow-visible">
-        <div className="flex min-w-max gap-1 rounded-[22px] bg-white/80 p-2 shadow-toss backdrop-blur-md md:min-w-0 md:flex-wrap">
+      <nav className="sticky top-4 z-20 -mx-3 overflow-x-auto px-3 md:overflow-visible" aria-label="대시보드 화면 이동">
+        <div
+          className="flex min-w-max gap-1 rounded-[22px] bg-white/85 p-2 shadow-toss backdrop-blur-md md:min-w-0 md:flex-wrap"
+          role="tablist"
+          aria-label="강의실 운영 현황 메뉴"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -85,15 +89,19 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
               <button
                 key={tab.key}
                 type="button"
+                id={`tab-${tab.key}`}
+                role="tab"
+                aria-selected={active}
+                aria-controls={`panel-${tab.key}`}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-[14px] px-4 py-2.5 text-sm font-bold transition-all duration-200 active:scale-[0.98]",
+                  "inline-flex items-center gap-2 rounded-[14px] px-4 py-2.5 text-sm font-bold transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-toss-blue focus-visible:ring-offset-2",
                   active
                     ? "bg-toss-blue text-white shadow-[0_4px_12px_rgba(49,130,246,0.25)]"
                     : "text-toss-gray-secondary hover:bg-toss-bg hover:text-toss-gray-primary",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {tab.label}
               </button>
             );
@@ -101,6 +109,7 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
         </div>
       </nav>
 
+      <section id={`panel-${activeTab}`} role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
       {activeTab === "today" ? <TodayRoomStatus data={data} now={now} /> : null}
       {activeTab === "search" ? <SearchExplorer data={data} /> : null}
       {activeTab === "week" ? <WeeklySchedule data={data} /> : null}
@@ -133,6 +142,7 @@ export default function DashboardTabs({ data }: DashboardTabsProps) {
           <ReviewNotesPanel data={data} />
         </div>
       ) : null}
+      </section>
     </div>
   );
 }

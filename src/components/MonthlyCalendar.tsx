@@ -12,6 +12,7 @@ import { TIME_SLOTS, scheduleOverlapsTimeSlot, slotToneClass, type TimeSlot, typ
 import { categoryStyle, cn } from "@/lib/utils";
 import Badge from "./Badge";
 import EmptyState from "./EmptyState";
+import PeriodOccupancyInfographic from "./PeriodOccupancyInfographic";
 
 type MonthlyCalendarProps = {
   data: SheetData;
@@ -204,6 +205,15 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
           </div>
         </div>
 
+        <PeriodOccupancyInfographic
+          data={data}
+          defaultMode={mode}
+          period="month"
+          range={monthRange}
+          title="월간 운영 지도"
+          subtitle={`${format(baseDate, "yyyy년 M월", { locale: ko })} · 강의실/강사별 오전·오후·저녁 배정 흐름`}
+        />
+
         {/* Monthly Slot Overview */}
         <div className="rounded-[24px] bg-white p-6 shadow-toss border-0">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -260,6 +270,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
             <select
               value={targetId}
               onChange={(event) => setTargetId(event.target.value)}
+              aria-label={mode === "instructor" ? "강사 선택" : "강의실 선택"}
               className="rounded-[12px] bg-toss-bg px-3 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
             >
               <option value="all">{mode === "instructor" ? "전체 강사" : "전체 강의실"}</option>
@@ -272,6 +283,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
             <select
               value={slotFilter}
               onChange={(event) => setSlotFilter(event.target.value as SlotFilter)}
+              aria-label="시간대 선택"
               className="rounded-[12px] bg-toss-bg px-3 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
             >
               <option value="all">전체 시간대</option>
@@ -284,6 +296,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value)}
+              aria-label="분야 선택"
               className="rounded-[12px] bg-toss-bg px-3 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
             >
               {categories.map((item) => (

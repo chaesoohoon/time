@@ -12,6 +12,7 @@ import { TIME_SLOTS, scheduleOverlapsTimeSlot, slotToneClass, type TimeSlot, typ
 import { categoryStyle, cn } from "@/lib/utils";
 import Badge from "./Badge";
 import EmptyState from "./EmptyState";
+import PeriodOccupancyInfographic from "./PeriodOccupancyInfographic";
 
 type WeeklyScheduleProps = {
   data: SheetData;
@@ -181,9 +182,23 @@ export default function WeeklySchedule({ data }: WeeklyScheduleProps) {
         </div>
       </div>
 
+      <PeriodOccupancyInfographic
+        data={data}
+        defaultMode={mode}
+        period="week"
+        range={week}
+        title="주간 운영 지도"
+        subtitle={`${format(week.start, "M월 d일", { locale: ko })} - ${format(week.end, "M월 d일", { locale: ko })} · 강의실/강사별 오전·오후·저녁 배정 흐름`}
+      />
+
       {weeklySchedules.length === 0 ? (
         <EmptyState title="이번 주 조건에 맞는 수업이 없습니다." description="기준 또는 시간대 필터를 조정해 주세요." />
       ) : null}
+
+      <div>
+        <h3 className="text-lg font-black tracking-tight text-toss-gray-primary">날짜별 상세 카드</h3>
+        <p className="mt-1 text-sm font-semibold text-toss-gray-secondary">필터 조건에 맞는 수업을 요일별로 확인합니다.</p>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-7">
         {week.dates.map((date) => {

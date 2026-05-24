@@ -43,11 +43,12 @@ export default function AppHeader({ lastUpdated }: AppHeaderProps) {
           <button
             type="button"
             onClick={() => startTransition(() => router.refresh())}
-            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-toss-blue px-5 py-3.5 text-sm font-bold text-white transition-all hover:bg-toss-blue-hover active:scale-[0.98] disabled:cursor-wait disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-toss-blue px-5 py-3.5 text-sm font-bold text-white transition-all hover:bg-toss-blue-hover active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-toss-blue focus-visible:ring-offset-2"
             disabled={isPending}
+            aria-label="Google Sheets 데이터를 새로 불러오기"
           >
-            <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
-            데이터 새로고침
+            <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} aria-hidden="true" />
+            {isPending ? "새로고침 중" : "데이터 새로고침"}
           </button>
         </div>
       </div>
