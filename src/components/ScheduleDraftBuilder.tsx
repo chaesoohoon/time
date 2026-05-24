@@ -23,6 +23,7 @@ import { humanizeDuration, minutesFromTime, parseDate, parseTime } from "@/lib/d
 import { expandSchedulesByDate, joinScheduleWithRelations } from "@/lib/scheduleUtils";
 import { cn } from "@/lib/utils";
 import Badge from "./Badge";
+import ScheduleDataTableEditor from "./ScheduleDataTableEditor";
 
 type ScheduleDraftBuilderProps = {
   data: SheetData;
@@ -452,6 +453,8 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
           </div>
         </div>
       </div>
+
+      <ScheduleDataTableEditor data={data} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6">
