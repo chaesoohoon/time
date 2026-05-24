@@ -6,7 +6,7 @@ import { ko } from "date-fns/locale";
 import { Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Filter, RotateCcw, UserRound } from "lucide-react";
 import type { JoinedSchedule, SheetData } from "@/types";
 import { isRoomClosed } from "@/lib/closureUtils";
-import { formatDateKey, getKoreanDayOfWeek, getKstNow, getWeekRange } from "@/lib/dateUtils";
+import { formatDateKey, getKoreanDayOfWeek, getKstNow, getWeekRange, isSaturdayDate, isSundayDate } from "@/lib/dateUtils";
 import { expandSchedulesByDate, joinScheduleWithRelations } from "@/lib/scheduleUtils";
 import { TIME_SLOTS, scheduleOverlapsTimeSlot, slotToneClass, type TimeSlot, type TimeSlotKey } from "@/lib/timeSlots";
 import { categoryStyle, cn } from "@/lib/utils";
@@ -222,19 +222,51 @@ export default function WeeklySchedule({ data }: WeeklyScheduleProps) {
         {week.dates.map((date) => {
           const dayKey = formatDateKey(date);
           const isToday = isSameDay(date, getKstNow());
+          const isSaturday = isSaturdayDate(date);
+          const isSunday = isSundayDate(date);
           const dayItems = weeklySchedules.filter((schedule) => schedule.date === dayKey);
           const allDayItems = expandSchedulesByDate(data.schedules, { start: date, end: date, dates: [date] }).map((schedule) =>
             joinScheduleWithRelations(schedule, data.courses, data.rooms, data.instructors),
           );
 
           return (
-            <section key={dayKey} className={cn("rounded-[24px] bg-white p-4 shadow-toss", isToday ? "ring-2 ring-toss-blue/30" : "")}>
+            <section
+              key={dayKey}
+              className={cn(
+                "rounded-[24px] p-4 shadow-toss",
+                isSunday ? "bg-rose-50/80 ring-1 ring-rose-100" : isSaturday ? "bg-sky-50/80 ring-1 ring-sky-100" : "bg-white",
+                isToday ? "ring-2 ring-toss-blue/30" : "",
+              )}
+            >
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className={cn("text-base font-black", isToday ? "text-toss-blue" : "text-toss-gray-primary")}>{getKoreanDayOfWeek(date)}</p>
-                  <p className="text-xs font-bold text-toss-gray-tertiary">{format(date, "M.d", { locale: ko })}</p>
+                  <p
+                    className={cn(
+                      "text-base font-black",
+                      isSunday ? "text-rose-600" : isSaturday ? "text-sky-600" : "text-toss-gray-primary",
+                      isToday ? "text-toss-blue" : "",
+                    )}
+                  >
+                    {getKoreanDayOfWeek(date)}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-xs font-bold",
+                      isSunday ? "text-rose-500" : isSaturday ? "text-sky-500" : "text-toss-gray-tertiary",
+                      isToday ? "text-toss-blue" : "",
+                    )}
+                  >
+                    {format(date, "M.d", { locale: ko })}
+                  </p>
                 </div>
-                <Badge className="bg-toss-bg text-toss-gray-secondary ring-0">{dayItems.length}건</Badge>
+                <Badge
+                  className={cn(
+                    "ring-0",
+                    isSunday ? "bg-white text-rose-600" : isSaturday ? "bg-white text-sky-600" : "bg-toss-bg text-toss-gray-secondary",
+                  )}
+                >
+                  {dayItems.length}건
+                </Badge>
               </div>
 
               <div className="space-y-3">

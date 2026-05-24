@@ -36,6 +36,18 @@ export function getKoreanDayOfWeek(date: Date): string {
   return KOREAN_DAYS[date.getDay()];
 }
 
+export function isSaturdayDate(date: Date): boolean {
+  return date.getDay() === 6;
+}
+
+export function isSundayDate(date: Date): boolean {
+  return date.getDay() === 0;
+}
+
+export function isWeekendDate(date: Date): boolean {
+  return isSaturdayDate(date) || isSundayDate(date);
+}
+
 export function parseDate(dateText: string | null | undefined): Date | null {
   const text = String(dateText || "").trim();
   if (!text) return null;

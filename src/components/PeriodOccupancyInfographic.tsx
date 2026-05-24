@@ -5,7 +5,7 @@ import { format, isSameDay } from "date-fns";
 import { Building2, CalendarRange, DoorOpen, Search, UserRound } from "lucide-react";
 import type { Closure, JoinedSchedule, SheetData } from "@/types";
 import { isTimeOverlapping } from "@/lib/conflictUtils";
-import { formatDateKey, getKoreanDayOfWeek, getKstNow } from "@/lib/dateUtils";
+import { formatDateKey, getKoreanDayOfWeek, getKstNow, isSaturdayDate, isSundayDate } from "@/lib/dateUtils";
 import { expandSchedulesByDate, joinScheduleWithRelations } from "@/lib/scheduleUtils";
 import { TIME_SLOTS, scheduleOverlapsTimeSlot, type TimeSlotKey } from "@/lib/timeSlots";
 import { categoryStyle, cn } from "@/lib/utils";
@@ -240,6 +240,18 @@ function dateLabel(date: Date, period: PeriodKind) {
   return format(date, "d");
 }
 
+function weekendTextClass(date: Date) {
+  if (isSundayDate(date)) return "text-rose-600";
+  if (isSaturdayDate(date)) return "text-sky-600";
+  return "";
+}
+
+function weekendColumnClass(date: Date) {
+  if (isSundayDate(date)) return "bg-rose-50/70";
+  if (isSaturdayDate(date)) return "bg-sky-50/70";
+  return "";
+}
+
 function segmentLabel(segment: Segment, width: number) {
   if (segment.isClosure) return "제한";
   if (width < 4.5) return `${segment.startIndex + 1}일`;
@@ -387,7 +399,16 @@ export default function PeriodOccupancyInfographic({
               <div className="overflow-hidden">
                 <div className="grid text-center" style={{ gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))` }}>
                   {range.dates.map((date) => (
-                    <span key={formatDateKey(date)} className={cn(isSameDay(date, today) ? "text-toss-blue" : "")}>
+                    <span
+                      key={formatDateKey(date)}
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5",
+                        weekendTextClass(date),
+                        isSundayDate(date) ? "bg-rose-50" : "",
+                        isSaturdayDate(date) ? "bg-sky-50" : "",
+                        isSameDay(date, today) ? "bg-blue-50 text-toss-blue" : "",
+                      )}
+                    >
                       {dateLabel(date, period)}
                     </span>
                   ))}
@@ -424,7 +445,16 @@ export default function PeriodOccupancyInfographic({
                           style={{ gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))` }}
                         >
                           {range.dates.map((date) => (
-                            <span key={formatDateKey(date)} className={cn("px-1", isSameDay(date, today) ? "text-toss-blue" : "")}>
+                            <span
+                              key={formatDateKey(date)}
+                              className={cn(
+                                "rounded-full px-1 py-0.5",
+                                weekendTextClass(date),
+                                isSundayDate(date) ? "bg-rose-50" : "",
+                                isSaturdayDate(date) ? "bg-sky-50" : "",
+                                isSameDay(date, today) ? "bg-blue-50 text-toss-blue" : "",
+                              )}
+                            >
                               {dateLabel(date, period)}
                             </span>
                           ))}
@@ -434,7 +464,11 @@ export default function PeriodOccupancyInfographic({
                             {range.dates.map((date) => (
                               <div
                                 key={formatDateKey(date)}
-                                className={cn("border-r border-toss-border/70 last:border-r-0", isSameDay(date, today) ? "bg-blue-50/50" : "")}
+                                className={cn(
+                                  "border-r border-toss-border/70 last:border-r-0",
+                                  weekendColumnClass(date),
+                                  isSameDay(date, today) ? "bg-blue-50/70" : "",
+                                )}
                               />
                             ))}
                           </div>

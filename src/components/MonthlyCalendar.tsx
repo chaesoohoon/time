@@ -5,7 +5,17 @@ import { addMonths, format, isSameDay, isSameMonth, subMonths } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Building2, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, Layers3, Search, UserRound, X } from "lucide-react";
 import type { JoinedSchedule, SheetData } from "@/types";
-import { formatDateKey, formatKoreanDate, getKoreanDayOfWeek, getKstNow, getMonthCalendarRange, getMonthRange, parseDate } from "@/lib/dateUtils";
+import {
+  formatDateKey,
+  formatKoreanDate,
+  getKoreanDayOfWeek,
+  getKstNow,
+  getMonthCalendarRange,
+  getMonthRange,
+  isSaturdayDate,
+  isSundayDate,
+  parseDate,
+} from "@/lib/dateUtils";
 import { getClosuresForDate, isRoomClosed } from "@/lib/closureUtils";
 import { expandSchedulesByDate, joinScheduleWithRelations } from "@/lib/scheduleUtils";
 import { TIME_SLOTS, scheduleOverlapsTimeSlot, slotToneClass, type TimeSlot, type TimeSlotKey } from "@/lib/timeSlots";
@@ -368,21 +378,43 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
               const dayItems = filteredSchedules.filter((schedule) => schedule.date === dayKey);
               const allDayItems = schedules.filter((schedule) => schedule.date === dayKey);
               const isToday = isSameDay(date, getKstNow());
+              const isSaturday = isSaturdayDate(date);
+              const isSunday = isSundayDate(date);
 
               return (
-                <article key={dayKey} className={cn("rounded-[22px] bg-toss-bg p-4", isToday ? "ring-2 ring-toss-blue/30" : "")}>
+                <article
+                  key={dayKey}
+                  className={cn(
+                    "rounded-[22px] p-4",
+                    isSunday ? "bg-rose-50/80 ring-1 ring-rose-100" : isSaturday ? "bg-sky-50/80 ring-1 ring-sky-100" : "bg-toss-bg",
+                    isToday ? "ring-2 ring-toss-blue/30" : "",
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => setSelectedDate(date)}
                     className="mb-3 flex w-full items-center justify-between rounded-[16px] bg-white px-4 py-3 text-left transition hover:shadow-sm"
                   >
                     <div>
-                      <p className={cn("text-base font-black", isToday ? "text-toss-blue" : "text-toss-gray-primary")}>
+                      <p
+                        className={cn(
+                          "text-base font-black",
+                          isSunday ? "text-rose-600" : isSaturday ? "text-sky-600" : "text-toss-gray-primary",
+                          isToday ? "text-toss-blue" : "",
+                        )}
+                      >
                         {format(date, "M월 d일")} {getKoreanDayOfWeek(date)}
                       </p>
                       <p className="text-xs font-bold text-toss-gray-tertiary">눌러서 오른쪽 상세 일정 확인</p>
                     </div>
-                    <Badge className="bg-toss-bg text-toss-gray-secondary ring-0">{dayItems.length}건</Badge>
+                    <Badge
+                      className={cn(
+                        "ring-0",
+                        isSunday ? "bg-rose-50 text-rose-600" : isSaturday ? "bg-sky-50 text-sky-600" : "bg-toss-bg text-toss-gray-secondary",
+                      )}
+                    >
+                      {dayItems.length}건
+                    </Badge>
                   </button>
 
                   <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-1 2xl:grid-cols-3">
@@ -522,7 +554,16 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
         <div className="rounded-[24px] bg-white p-5 shadow-toss border-0">
           <div className="grid grid-cols-7 border-b border-toss-border pb-3 text-center text-xs font-bold text-toss-gray-secondary">
             {["월", "화", "수", "목", "금", "토", "일"].map((day) => (
-              <div key={day}>{day}</div>
+              <div
+                key={day}
+                className={cn(
+                  "rounded-full py-1",
+                  day === "토" ? "bg-sky-50 text-sky-600" : "",
+                  day === "일" ? "bg-rose-50 text-rose-600" : "",
+                )}
+              >
+                {day}
+              </div>
             ))}
           </div>
           <div className="grid grid-cols-1 gap-2 pt-3 sm:grid-cols-7">
@@ -533,6 +574,8 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
               const isToday = isSameDay(date, getKstNow());
               const isSelected = isSameDay(date, selectedDate);
               const inCurrentMonth = isSameMonth(date, baseDate);
+              const isSaturday = isSaturdayDate(date);
+              const isSunday = isSundayDate(date);
 
               // To make it extremely clean and prevent visual clutter/overflow inside cell buttons,
               // we only show up to 2 items and summarize the rest.
@@ -547,8 +590,12 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
                   onClick={() => setSelectedDate(date)}
                   className={cn(
                     "min-h-[110px] sm:min-h-[120px] rounded-[20px] p-3 text-left transition-all duration-200 outline-none flex flex-col justify-between border",
-                    inCurrentMonth 
-                      ? "bg-white border-[#f2f4f6] hover:border-toss-blue/40 hover:bg-toss-bg/30" 
+                    inCurrentMonth
+                      ? isSunday
+                        ? "bg-rose-50/70 border-rose-100 hover:border-rose-200 hover:bg-rose-50"
+                        : isSaturday
+                          ? "bg-sky-50/70 border-sky-100 hover:border-sky-200 hover:bg-sky-50"
+                          : "bg-white border-[#f2f4f6] hover:border-toss-blue/40 hover:bg-toss-bg/30"
                       : "bg-[#f9fafb]/50 border-[#f2f4f6]/50 text-toss-gray-tertiary opacity-45",
                     isSelected ? "ring-2 ring-toss-blue border-toss-blue bg-toss-blue/5 shadow-sm" : "",
                   )}
@@ -559,11 +606,24 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
                         {format(date, "d")}
                       </span>
                     ) : (
-                      <span className={cn("text-sm font-bold", isSelected ? "text-toss-blue" : "text-toss-gray-primary")}>
+                      <span
+                        className={cn(
+                          "text-sm font-bold",
+                          isSunday ? "text-rose-600" : isSaturday ? "text-sky-600" : "text-toss-gray-primary",
+                          isSelected ? "text-toss-blue" : "",
+                        )}
+                      >
                         {format(date, "d")}
                       </span>
                     )}
-                    <span className="text-[10px] font-bold text-toss-gray-tertiary sm:hidden">{getKoreanDayOfWeek(date)}</span>
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold sm:hidden",
+                        isSunday ? "text-rose-500" : isSaturday ? "text-sky-500" : "text-toss-gray-tertiary",
+                      )}
+                    >
+                      {getKoreanDayOfWeek(date)}
+                    </span>
                   </div>
                   
                   <div className="mt-2 w-full space-y-1 overflow-hidden">
