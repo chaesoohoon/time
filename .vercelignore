@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+outputs
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tsbuildinfo
+next-env.d.ts
+__pycache__
+*.pyc
