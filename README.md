@@ -1,130 +1,70 @@
-export type RawRow = Record<string, string>;
+# 강의실 운영 현황
 
-export type Room = {
-  room_id: string;
-  room_name: string;
-  room_type: string;
-  capacity: number | null;
-  floor: string;
-  equipment: string;
-  is_active: boolean;
-  memo: string;
-};
+국제 첨단점 학원 내부에서 매일 켜놓고 보는 강의실 운영 상황판입니다.
 
-export type Instructor = {
-  instructor_id: string;
-  instructor_name: string;
-  field: string;
-  phone: string;
-  email: string;
-  is_active: boolean;
-  memo: string;
-};
+Google Sheets의 `rooms`, `instructors`, `courses`, `schedules`, `closures`, `review_notes` 데이터를 서버에서 CSV로 읽어와 오늘 현황, 주간/월간/연간 일정, 강의실별/강사별 보기, 빈 강의실 찾기, 중복 배정 경고를 보여줍니다.
 
-export type Course = {
-  course_id: string;
-  course_name: string;
-  category: string;
-  start_date: string;
-  end_date: string;
-  total_hours: number | null;
-  status: string;
-  memo: string;
-};
+## Getting Started
 
-export type Schedule = {
-  schedule_id: string;
-  course_id: string;
-  room_id: string;
-  instructor_id: string;
-  start_date: string;
-  end_date: string;
-  days_of_week: string;
-  start_time: string;
-  end_time: string;
-  schedule_type: string;
-  status: string;
-  memo: string;
-};
+환경 변수:
 
-export type Closure = {
-  closure_id: string;
-  date: string;
-  room_id: string;
-  closure_type: string;
-  start_time: string;
-  end_time: string;
-  memo: string;
-};
+```bash
+NEXT_PUBLIC_GOOGLE_SHEET_ID=1E-L-1WfHiqmFey0oPwmSjaRvljAsiFbQk9japkGQ7eI
+```
 
-export type ReviewNote = {
-  id: string;
-  category: string;
-  target: string;
-  content: string;
-  status: string;
-  memo: string;
-  related_id: string;
-};
+운영 데이터베이스:
 
-export type SheetData = {
-  rooms: Room[];
-  instructors: Instructor[];
-  courses: Course[];
-  schedules: Schedule[];
-  closures: Closure[];
-  reviewNotes: ReviewNote[];
-  dashboardSample: RawRow[];
-};
+[강의실 운영 현황 통합 DB](https://docs.google.com/spreadsheets/d/1E-L-1WfHiqmFey0oPwmSjaRvljAsiFbQk9japkGQ7eI/edit)
 
-export type ExpandedSchedule = Schedule & {
-  date: string;
-  dateObj: Date;
-  startDateTime: Date;
-  endDateTime: Date;
-  needsDayReview: boolean;
-};
+개발 서버 실행:
 
-export type JoinedSchedule = ExpandedSchedule & {
-  course: Course | null;
-  room: Room | null;
-  instructor: Instructor | null;
-  courseName: string;
-  category: string;
-  roomName: string;
-  instructorName: string;
-};
+```bash
+npm run dev
+```
 
-export type RoomStatusKind =
-  | "in-use"
-  | "available"
-  | "ending-soon"
-  | "no-reservation"
-  | "closed"
-  | "conflict";
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다.
 
-export type RoomStatus = {
-  kind: RoomStatusKind;
-  label: string;
-  message: string;
-  currentSchedule: JoinedSchedule | null;
-  nextSchedule: JoinedSchedule | null;
-  remainingSchedules: JoinedSchedule[];
-  closure: Closure | null;
-  conflictCount: number;
-  availableUntil: string | null;
-  progress: number | null;
-};
+## 데이터 연결
 
-export type ScheduleConflict = {
-  id: string;
-  type: "room" | "instructor";
-  date: string;
-  start_time: string;
-  end_time: string;
-  target_id: string;
-  target_name: string;
-  schedules: Schedule[];
-  course_names: string[];
-  memo: string;
-};
+CSV export URL 형식:
+
+```text
+https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}
+```
+
+시트가 비공개이거나 탭 이름이 맞지 않으면 샘플 데이터로 대체하지 않고 오류 화면을 표시합니다.
+
+## Scripts
+
+```bash
+npm run lint
+npm run build
+```
+
+## Google Sheets 바로 저장 설정
+
+앱의 `시간표 작성` 화면은 기본적으로 입력값을 검사하고, 쓰기 연결이 설정되어 있으면 Google Sheets에 바로 저장합니다.
+
+1. Google Sheets에서 `확장 프로그램 > Apps Script`를 엽니다.
+2. `scripts/google-sheets-write-webapp.gs` 내용을 붙여넣습니다.
+3. Apps Script의 `프로젝트 설정 > 스크립트 속성`에 `WRITE_SECRET` 값을 추가합니다.
+4. `배포 > 새 배포 > 웹 앱`으로 배포합니다.
+   - 실행 사용자: 나
+   - 액세스 권한: 링크가 있는 모든 사용자
+5. `.env.local`에 아래 값을 추가하고 개발 서버를 재시작합니다.
+
+```bash
+GOOGLE_SHEETS_WRITE_WEB_APP_URL=https://script.google.com/macros/s/...
+GOOGLE_SHEETS_WRITE_SECRET=Apps Script에 넣은 WRITE_SECRET과 같은 값
+```
+
+이 값들은 서버에서만 사용됩니다. 브라우저로 노출되지 않도록 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
+
+## Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- date-fns
+- papaparse
+- lucide-react
