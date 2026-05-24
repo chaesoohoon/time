@@ -65,6 +65,14 @@ function compact(value: string) {
   return value.replace(/\s+/g, "").toLowerCase();
 }
 
+function unique(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function scheduleStatus(schedule: JoinedSchedule) {
+  return schedule.course?.status || schedule.status || "상태 미정";
+}
+
 function dateIndexMap(range: DateRange) {
   return new Map(range.dates.map((date, index) => [formatDateKey(date), index]));
 }
@@ -269,16 +277,28 @@ export default function PeriodOccupancyInfographic({
 }: PeriodOccupancyInfographicProps) {
   const [mode, setMode] = useState<FocusMode>(defaultMode);
   const [targetId, setTargetId] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
 
-  const schedules = useMemo(
-    () =>
-      expandSchedulesByDate(data.schedules, range).map((schedule) =>
-        joinScheduleWithRelations(schedule, data.courses, data.rooms, data.instructors),
-      ),
-    [data, range],
+  const categories = useMemo(() => unique(data.courses.map((course) => course.category || "기타")), [data.courses]);
+  const statuses = useMemo(
+    () => unique([...data.courses.map((course) => course.status || "상태 미정"), ...data.schedules.map((schedule) => schedule.status || "상태 미정")]),
+    [data.courses, data.schedules],
   );
+
+  const schedules = useMemo(() => {
+    const joined = expandSchedulesByDate(data.schedules, range).map((schedule) =>
+      joinScheduleWithRelations(schedule, data.courses, data.rooms, data.instructors),
+    );
+
+    return joined.filter((schedule) => {
+      if (categoryFilter !== "all" && schedule.category !== categoryFilter) return false;
+      if (statusFilter !== "all" && scheduleStatus(schedule) !== statusFilter && schedule.status !== statusFilter) return false;
+      return true;
+    });
+  }, [categoryFilter, data, range, statusFilter]);
 
   const lanes = useMemo(() => buildLanes(data, mode, range, schedules), [data, mode, range, schedules]);
   const options = sourceOptions(data, mode);
@@ -339,7 +359,7 @@ export default function PeriodOccupancyInfographic({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_150px_150px]">
+      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_150px_150px_130px_130px]">
         <label className="relative block">
           <span className="sr-only">과정, 강사, 강의실 검색</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-toss-gray-tertiary" aria-hidden="true" />
@@ -366,6 +386,38 @@ export default function PeriodOccupancyInfographic({
           {options.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            setShowAll(false);
+          }}
+          aria-label="분야 필터"
+          className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
+        >
+          <option value="all">전체 분야</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setShowAll(false);
+          }}
+          aria-label="상태 필터"
+          className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
+        >
+          <option value="all">전체 상태</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
             </option>
           ))}
         </select>

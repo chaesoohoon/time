@@ -13,6 +13,7 @@ import {
   PlusCircle,
   RefreshCw,
   Save,
+  Search,
   Settings2,
   Wand2,
 } from "lucide-react";
@@ -79,6 +80,10 @@ function cleanCell(value: string | number | null | undefined) {
 
 function toTsv(values: Array<string | number | null | undefined>) {
   return values.map(cleanCell).join("\t");
+}
+
+function compactSearch(value: string) {
+  return value.replace(/\s+/g, "").toLowerCase();
 }
 
 function buildDateRange(startDate: string, endDate: string) {
@@ -149,6 +154,8 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
   const [writeConfigured, setWriteConfigured] = useState<boolean | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("checking");
   const [saveMessage, setSaveMessage] = useState("Google Sheets 바로 저장 연결 상태를 확인하고 있습니다.");
+  const [courseSearch, setCourseSearch] = useState("");
+  const [scheduleSearch, setScheduleSearch] = useState("");
   const [courseDraft, setCourseDraft] = useState<CourseDraft>({
     course_id: nextCourseId,
     category: defaultCourse?.category || "기타",
@@ -280,6 +287,24 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
     () => Array.from(new Set(data.courses.map((course) => course.category || "기타"))),
     [data.courses],
   );
+  const filteredCourses = useMemo(() => {
+    const keyword = compactSearch(courseSearch);
+    const result = keyword
+      ? data.courses.filter((course) =>
+          compactSearch([course.course_name, course.category, course.status, course.memo].join(" ")).includes(keyword),
+        )
+      : data.courses;
+    const selected = data.courses.find((course) => course.course_id === scheduleDraft.course_id);
+    return selected && !result.some((course) => course.course_id === selected.course_id) ? [selected, ...result] : result;
+  }, [courseSearch, data.courses, scheduleDraft.course_id]);
+  const filteredSchedules = useMemo(() => {
+    const keyword = compactSearch(scheduleSearch);
+    const result = keyword
+      ? data.schedules.filter((schedule) => compactSearch(scheduleLabel(schedule, data)).includes(keyword))
+      : data.schedules;
+    const selected = data.schedules.find((schedule) => schedule.schedule_id === scheduleDraft.schedule_id);
+    return selected && !result.some((schedule) => schedule.schedule_id === selected.schedule_id) ? [selected, ...result] : result;
+  }, [data, scheduleDraft.schedule_id, scheduleSearch]);
 
   useEffect(() => {
     let active = true;
@@ -389,6 +414,8 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
 
   const switchMode = (nextMode: DraftMode) => {
     setMode(nextMode);
+    setCourseSearch("");
+    setScheduleSearch("");
     if (nextMode === "newCourse") {
       setScheduleDraft((current) => ({
         ...current,
@@ -466,19 +493,37 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
             </div>
 
             {mode === "editSchedule" ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <label className="relative block">
+                  <span className="sr-only">수정할 일정 검색</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-toss-gray-tertiary" aria-hidden="true" />
+                  <input
+                    value={scheduleSearch}
+                    onChange={(event) => setScheduleSearch(event.target.value)}
+                    placeholder="과정명, 강사, 강의실, 날짜로 검색"
+                    className="w-full rounded-[14px] border-0 bg-toss-bg py-3 pl-9 pr-4 text-sm font-semibold text-toss-gray-primary outline-none transition-all duration-200 focus:bg-white focus:ring-2 focus:ring-toss-blue"
+                  />
+                </label>
                 <label className="text-xs font-bold text-toss-gray-secondary">수정할 일정</label>
                 <select
                   value={scheduleDraft.schedule_id}
                   onChange={(event) => selectExistingSchedule(event.target.value)}
+                  disabled={filteredSchedules.length === 0}
                   className="w-full rounded-[14px] bg-toss-bg px-4 py-3 text-toss-gray-primary outline-none transition-all duration-200 border-0 focus:bg-white focus:ring-2 focus:ring-toss-blue text-sm font-semibold"
                 >
-                  {data.schedules.map((schedule) => (
-                    <option key={schedule.schedule_id} value={schedule.schedule_id}>
-                      {scheduleLabel(schedule, data)}
-                    </option>
-                  ))}
+                  {filteredSchedules.length === 0 ? (
+                    <option value="">검색 결과가 없습니다</option>
+                  ) : (
+                    filteredSchedules.map((schedule) => (
+                      <option key={schedule.schedule_id} value={schedule.schedule_id}>
+                        {scheduleLabel(schedule, data)}
+                      </option>
+                    ))
+                  )}
                 </select>
+                <p className="text-xs font-semibold text-toss-gray-tertiary">
+                  {filteredSchedules.length}개 일정 표시 중
+                </p>
               </div>
             ) : mode === "newCourse" ? (
               <div className="grid gap-4 md:grid-cols-2">
@@ -517,19 +562,37 @@ export default function ScheduleDraftBuilder({ data }: ScheduleDraftBuilderProps
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <label className="relative block">
+                  <span className="sr-only">과정 검색</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-toss-gray-tertiary" aria-hidden="true" />
+                  <input
+                    value={courseSearch}
+                    onChange={(event) => setCourseSearch(event.target.value)}
+                    placeholder="과정명이나 분야로 검색"
+                    className="w-full rounded-[14px] border-0 bg-toss-bg py-3 pl-9 pr-4 text-sm font-semibold text-toss-gray-primary outline-none transition-all duration-200 focus:bg-white focus:ring-2 focus:ring-toss-blue"
+                  />
+                </label>
                 <label className="text-xs font-bold text-toss-gray-secondary">과정 선택</label>
                 <select
                   value={scheduleDraft.course_id}
                   onChange={(event) => updateSchedule("course_id", event.target.value)}
+                  disabled={filteredCourses.length === 0}
                   className="w-full rounded-[14px] bg-toss-bg px-4 py-3 text-toss-gray-primary outline-none transition-all duration-200 border-0 focus:bg-white focus:ring-2 focus:ring-toss-blue text-sm font-semibold"
                 >
-                  {data.courses.map((course) => (
-                    <option key={course.course_id} value={course.course_id}>
-                      {course.course_name}
-                    </option>
-                  ))}
+                  {filteredCourses.length === 0 ? (
+                    <option value="">검색 결과가 없습니다</option>
+                  ) : (
+                    filteredCourses.map((course) => (
+                      <option key={course.course_id} value={course.course_id}>
+                        {course.course_name}
+                      </option>
+                    ))
+                  )}
                 </select>
+                <p className="text-xs font-semibold text-toss-gray-tertiary">
+                  {filteredCourses.length}개 과정 표시 중
+                </p>
               </div>
             )}
           </div>

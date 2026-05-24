@@ -5,17 +5,21 @@ import { addDays, format } from "date-fns";
 import { Building2, Search, UserRound } from "lucide-react";
 import type { Schedule, SheetData } from "@/types";
 import { formatDateKey, getKstNow, getYearRange, parseDate } from "@/lib/dateUtils";
+import { TIME_SLOTS, scheduleSlotKeys, slotToneClass, type TimeSlotKey } from "@/lib/timeSlots";
 import { cn } from "@/lib/utils";
 import Badge from "./Badge";
 import EmptyState from "./EmptyState";
 
 type FocusMode = "room" | "instructor";
+type SlotFilter = "all" | TimeSlotKey;
 
 type Segment = {
   id: string;
   courseId: string;
   courseName: string;
   category: string;
+  status: string;
+  slotKeys: TimeSlotKey[];
   start: Date;
   end: Date;
   color: string;
@@ -205,6 +209,7 @@ function buildLanes(data: SheetData, mode: FocusMode, yearStart: Date, yearEnd: 
 
       if (existing) {
         existing.details = unique([...existing.details, detail]);
+        existing.slotKeys = [...new Set([...existing.slotKeys, ...scheduleSlotKeys(schedule)])];
         return;
       }
 
@@ -213,6 +218,8 @@ function buildLanes(data: SheetData, mode: FocusMode, yearStart: Date, yearEnd: 
         courseId: schedule.course_id,
         courseName: course?.course_name || "미확인 과정",
         category: course?.category || "기타",
+        status: course?.status || schedule.status || "상태 미정",
+        slotKeys: scheduleSlotKeys(schedule),
         start: range.start,
         end: range.end,
         color: courseColorMap.get(schedule.course_id) || COURSE_COLORS[0],
@@ -247,17 +254,45 @@ function laneMatches(lane: Lane, query: string) {
   return haystack.includes(query);
 }
 
+function rebuildLane(lane: Lane, segments: Segment[], yearStart: Date, yearEnd: Date, now: Date): Lane {
+  const gaps = buildGaps(segments, yearStart, yearEnd, now);
+  const longestGap = gaps.toSorted((a, b) => b.days - a.days)[0] || null;
+  const currentOrNextGap = gaps.find((gap) => gap.isCurrent) || gaps.find((gap) => gap.start >= startOfDay(now)) || null;
+  return { ...lane, segments, gaps, longestGap, currentOrNextGap };
+}
+
 export default function AnnualOccupancyInfographic({ data }: { data: SheetData }) {
   const [mode, setMode] = useState<FocusMode>("room");
   const [targetId, setTargetId] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
   const [query, setQuery] = useState("");
   const now = getKstNow();
   const year = getYearRange(now);
 
   const lanes = useMemo(() => buildLanes(data, mode, year.start, year.end, now), [data, mode, now, year.end, year.start]);
+  const categories = useMemo(() => unique(data.courses.map((course) => course.category || "기타")), [data.courses]);
+  const statuses = useMemo(
+    () => unique([...data.courses.map((course) => course.status || "상태 미정"), ...data.schedules.map((schedule) => schedule.status || "상태 미정")]),
+    [data.courses, data.schedules],
+  );
+  const filteredLanes = useMemo(
+    () =>
+      lanes.map((lane) => {
+        const segments = lane.segments.filter((segment) => {
+          if (categoryFilter !== "all" && segment.category !== categoryFilter) return false;
+          if (statusFilter !== "all" && segment.status !== statusFilter) return false;
+          if (slotFilter !== "all" && !segment.slotKeys.includes(slotFilter)) return false;
+          return true;
+        });
+        return rebuildLane(lane, segments, year.start, year.end, now);
+      }),
+    [categoryFilter, lanes, now, slotFilter, statusFilter, year.end, year.start],
+  );
   const targetOptions = lanes.map((lane) => ({ id: lane.id, label: lane.label }));
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleLanes = lanes
+  const visibleLanes = filteredLanes
     .filter((lane) => targetId === "all" || lane.id === targetId)
     .filter((lane) => laneMatches(lane, normalizedQuery))
     .sort((a, b) => b.segments.length - a.segments.length || a.label.localeCompare(b.label));
@@ -280,7 +315,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
             {mode === "room" ? <Building2 className="h-6 w-6" /> : <UserRound className="h-6 w-6" />}
           </div>
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-toss-gray-primary">연간 빈 구간 지도</h2>
+            <h2 className="text-2xl font-black tracking-tight text-toss-gray-primary">연간 운영 지도</h2>
             <p className="text-sm font-semibold text-toss-gray-secondary">
               초록 바탕은 비어 있는 기간, 색 막대는 과정이 배정된 기간입니다.
             </p>
@@ -314,7 +349,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_170px_170px]">
+      <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(220px,1fr)_180px_150px_150px_150px]">
         <label className="relative">
           <span className="sr-only">과정, 강사, 강의실 검색</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-toss-gray-tertiary" />
@@ -338,6 +373,45 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
             </option>
           ))}
         </select>
+        <select
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          aria-label="분야 필터"
+          className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
+        >
+          <option value="all">전체 분야</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          aria-label="상태 필터"
+          className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
+        >
+          <option value="all">전체 상태</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+        <select
+          value={slotFilter}
+          onChange={(event) => setSlotFilter(event.target.value as SlotFilter)}
+          aria-label="시간대 필터"
+          className="rounded-[14px] bg-toss-bg px-3.5 py-3 text-sm font-bold text-toss-gray-primary outline-none transition focus:bg-white focus:ring-2 focus:ring-toss-blue"
+        >
+          <option value="all">전체 시간대</option>
+          {TIME_SLOTS.map((slot) => (
+            <option key={slot.key} value={slot.key}>
+              {slot.label}
+            </option>
+          ))}
+        </select>
         <div className="rounded-[16px] bg-emerald-50 p-3">
           <p className="text-xs font-bold text-emerald-700">현재 빈 대상</p>
           <p className="mt-1 text-xl font-black text-emerald-900">{currentFreeCount}개</p>
@@ -351,6 +425,11 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
       <div className="mt-5 rounded-[20px] bg-toss-bg p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">빈 기간</span>
+          {TIME_SLOTS.map((slot) => (
+            <span key={slot.key} className={cn("rounded-full px-3 py-1 text-xs font-black", slotToneClass(slot.key))}>
+              {slot.label} {slot.description}
+            </span>
+          ))}
           {visibleCourses.slice(0, 12).map((course) => (
             <span
               key={course.courseId}
