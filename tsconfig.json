@@ -1,0 +1,6 @@
+NEXT_PUBLIC_GOOGLE_SHEET_ID=1E-L-1WfHiqmFey0oPwmSjaRvljAsiFbQk9japkGQ7eI
+
+# Optional: enables the "Google Sheets 바로 저장" button.
+# Keep these server-only variables secret. Do not prefix them with NEXT_PUBLIC_.
+GOOGLE_SHEETS_WRITE_WEB_APP_URL=
+GOOGLE_SHEETS_WRITE_SECRET=
