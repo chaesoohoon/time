@@ -55,6 +55,28 @@ function percentInMonth(date: Date, monthStart: Date, monthEnd: Date) {
   return (offset / totalDays) * 100;
 }
 
+function monthDayTicks(monthStart: Date, monthEnd: Date) {
+  const lastDay = monthEnd.getDate();
+  return [1, 5, 10, 15, 20, 25, lastDay]
+    .filter((day, index, values) => day <= lastDay && values.indexOf(day) === index)
+    .map((day) => {
+      const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+      return {
+        day,
+        label: day === 1 ? format(date, "M월 d일") : `${day}일`,
+        left: percentInMonth(date, monthStart, monthEnd),
+      };
+    });
+}
+
+function flowItemLabel(item: NonNullable<ReturnType<typeof overlapsMonth>> & { schedule: JoinedSchedule | SheetData["schedules"][number]; courseName: string }) {
+  const range =
+    formatDateKey(item.clampedStart) === formatDateKey(item.clampedEnd)
+      ? format(item.clampedStart, "M.d")
+      : `${format(item.clampedStart, "M.d")}-${format(item.clampedEnd, "M.d")}`;
+  return `${range} · ${item.schedule.start_time}-${item.schedule.end_time} · ${item.courseName}`;
+}
+
 function scheduleTextMatches(schedule: JoinedSchedule, query: string) {
   if (!query) return true;
   return [schedule.courseName, schedule.instructorName, schedule.roomName, schedule.category, schedule.memo]
@@ -163,6 +185,7 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
   const selectedSchedules = filteredSchedules.filter((schedule) => schedule.date === formatDateKey(selectedDate));
   const selectedClosures = getClosuresForDate(selectedDate, data.closures);
   const activeDayCount = new Set(filteredSchedules.map((schedule) => schedule.date)).size;
+  const dayTicks = monthDayTicks(monthRange.start, monthRange.end);
   const overviewDates = monthRange.dates.filter((date) => {
     if (mode === "room" && targetId !== "all") return true;
     const key = formatDateKey(date);
@@ -500,10 +523,19 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
             <EmptyState title="이 달에 이어지는 과정이 없습니다." description="다른 달로 이동하거나 schedules 시트를 확인해 주세요." />
           ) : (
             <div className="space-y-4">
-              <div className="hidden grid-cols-6 text-center text-xs font-bold text-toss-gray-tertiary md:grid md:pl-[320px]">
-                {[1, 6, 11, 16, 21, 26].map((day) => (
-                  <span key={day}>{day}일</span>
-                ))}
+              <div className="hidden grid-cols-[300px_1fr] gap-4 text-xs font-bold text-toss-gray-tertiary md:grid">
+                <span />
+                <div className="relative h-7">
+                  {dayTicks.map((tick) => (
+                    <span
+                      key={tick.label}
+                      className="absolute top-0 flex h-full -translate-x-1/2 items-center justify-center rounded-full bg-toss-bg px-2"
+                      style={{ left: `${tick.left}%` }}
+                    >
+                      {tick.label}
+                    </span>
+                  ))}
+                </div>
               </div>
               {flowItems.map((item) => {
                 if (!item) return null;
@@ -530,16 +562,21 @@ export default function MonthlyCalendar({ data }: MonthlyCalendarProps) {
                       </p>
                     </div>
                     <div className="relative h-12 rounded-[14px] bg-white">
-                      <div className="absolute inset-0 grid grid-cols-6">
-                        {Array.from({ length: 6 }, (_, index) => (
-                          <div key={index} className="border-r border-toss-border/50 last:border-r-0" />
+                      <div className="absolute inset-0">
+                        {dayTicks.map((tick) => (
+                          <div
+                            key={tick.label}
+                            className="absolute bottom-0 top-0 border-l border-toss-border/60"
+                            style={{ left: `${tick.left}%` }}
+                          />
                         ))}
                       </div>
                       <div
-                        className={cn("absolute top-1/2 min-w-12 -translate-y-1/2 rounded-full px-3 py-1 text-[10px] font-black text-white shadow-sm flex items-center justify-center", style.bar)}
+                        className={cn("absolute top-1/2 min-w-16 -translate-y-1/2 rounded-full px-3 py-1 text-[10px] font-black text-white shadow-sm flex items-center justify-center", style.bar)}
                         style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }}
+                        title={flowItemLabel(item)}
                       >
-                        <span className="block whitespace-nowrap truncate">{item.schedule.start_time}</span>
+                        <span className="block whitespace-nowrap truncate">{flowItemLabel(item)}</span>
                       </div>
                     </div>
                   </article>

@@ -28,6 +28,8 @@ type Segment = {
   sourceId: string;
   startIndex: number;
   endIndex: number;
+  startTime: string;
+  endTime: string;
   title: string;
   detail: string;
   category: string;
@@ -57,9 +59,10 @@ type PeriodOccupancyInfographicProps = {
 };
 
 const SLOT_ROW_GAP = 10;
-const SEGMENT_HEIGHT = 28;
+const SEGMENT_HEIGHT = 34;
 const SEGMENT_GAP = 8;
 const LANE_PREVIEW_LIMIT = 8;
+const SLOT_LABEL_WIDTH = 56;
 
 function compact(value: string) {
   return value.replace(/\s+/g, "").toLowerCase();
@@ -154,6 +157,8 @@ function buildScheduleSegments(data: SheetData, mode: FocusMode, sourceId: strin
           sourceId: schedule.schedule_id,
           startIndex: dayIndex,
           endIndex: dayIndex,
+          startTime: schedule.start_time,
+          endTime: schedule.end_time,
           title: schedule.courseName,
           detail: mode === "room" ? schedule.instructorName : schedule.roomName,
           category: schedule.category,
@@ -177,6 +182,8 @@ function buildScheduleSegments(data: SheetData, mode: FocusMode, sourceId: strin
             sourceId: closure.closure_id,
             startIndex: dayIndex,
             endIndex: dayIndex,
+            startTime: closure.start_time || "00:00",
+            endTime: closure.end_time || "23:59",
             title: closure.closure_type || "사용 제한",
             detail: closure.memo || "휴강/점검",
             category: "기타",
@@ -240,12 +247,18 @@ function laneMatches(lane: Lane, query: string) {
 
 function timelineMinWidth(period: PeriodKind, dateCount: number) {
   if (period === "week") return Math.max(760, dateCount * 110);
-  return Math.max(1120, dateCount * 38);
+  return Math.max(1240, dateCount * 40);
 }
 
 function dateLabel(date: Date, period: PeriodKind) {
   if (period === "week") return `${format(date, "M.d")} ${getKoreanDayOfWeek(date)}`;
-  return format(date, "d");
+  return date.getDate() === 1 ? format(date, "M월 d일") : `${format(date, "d")}일`;
+}
+
+function shouldShowDateTick(date: Date, index: number, period: PeriodKind, totalCount: number) {
+  if (period === "week") return true;
+  const day = date.getDate();
+  return day === 1 || day % 5 === 0 || index === totalCount - 1;
 }
 
 function weekendTextClass(date: Date) {
@@ -260,11 +273,63 @@ function weekendColumnClass(date: Date) {
   return "";
 }
 
-function segmentLabel(segment: Segment, width: number) {
-  if (segment.isClosure) return "제한";
-  if (width < 4.5) return `${segment.startIndex + 1}일`;
-  if (width < 9) return `${segment.startIndex + 1}-${segment.endIndex + 1}일`;
-  return segment.title;
+function segmentDateRange(segment: Segment, range: DateRange) {
+  const start = range.dates[segment.startIndex];
+  const end = range.dates[segment.endIndex];
+  if (!start || !end) return "";
+  if (formatDateKey(start) === formatDateKey(end)) return format(start, "M.d");
+  return `${format(start, "M.d")}-${format(end, "M.d")}`;
+}
+
+function segmentLabel(segment: Segment, width: number, range: DateRange) {
+  const dateText = segmentDateRange(segment, range);
+  const timeText = `${segment.startTime}-${segment.endTime}`;
+  if (segment.isClosure) return width < 9 ? `제한 ${segment.startTime}` : `제한 · ${dateText} · ${timeText}`;
+  if (width < 4.5) return segment.startTime;
+  if (width < 9) return `${dateText} ${segment.startTime}`;
+  if (width < 16) return `${dateText} · ${timeText}`;
+  return `${dateText} · ${timeText} · ${segment.title}`;
+}
+
+function DateAxis({
+  inset = false,
+  period,
+  range,
+  today,
+}: {
+  inset?: boolean;
+  period: PeriodKind;
+  range: DateRange;
+  today: Date;
+}) {
+  return (
+    <div
+      className={cn("grid text-center text-[10px] font-black text-toss-gray-tertiary", inset ? "mr-3" : "")}
+      style={{
+        gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))`,
+        marginLeft: inset ? SLOT_LABEL_WIDTH : undefined,
+      }}
+    >
+      {range.dates.map((date, index) => {
+        const showTick = shouldShowDateTick(date, index, period, range.dates.length);
+        return (
+          <span
+            key={formatDateKey(date)}
+            className={cn(
+              "min-w-0 rounded-full px-1 py-0.5",
+              !showTick ? "opacity-0" : "",
+              weekendTextClass(date),
+              isSundayDate(date) ? "bg-rose-50" : "",
+              isSaturdayDate(date) ? "bg-sky-50" : "",
+              isSameDay(date, today) ? "bg-blue-50 text-toss-blue" : "",
+            )}
+          >
+            {showTick ? dateLabel(date, period) : "-"}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function PeriodOccupancyInfographic({
@@ -449,22 +514,7 @@ export default function PeriodOccupancyInfographic({
             <div className="hidden grid-cols-[220px_1fr] gap-4 px-3 text-xs font-black text-toss-gray-tertiary lg:grid">
               <span>{mode === "room" ? "강의실" : "강사"}</span>
               <div className="overflow-hidden">
-                <div className="grid text-center" style={{ gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))` }}>
-                  {range.dates.map((date) => (
-                    <span
-                      key={formatDateKey(date)}
-                      className={cn(
-                        "rounded-full px-1.5 py-0.5",
-                        weekendTextClass(date),
-                        isSundayDate(date) ? "bg-rose-50" : "",
-                        isSaturdayDate(date) ? "bg-sky-50" : "",
-                        isSameDay(date, today) ? "bg-blue-50 text-toss-blue" : "",
-                      )}
-                    >
-                      {dateLabel(date, period)}
-                    </span>
-                  ))}
-                </div>
+                <DateAxis inset period={period} range={range} today={today} />
               </div>
             </div>
 
@@ -492,27 +542,17 @@ export default function PeriodOccupancyInfographic({
 
                     <div className="overflow-x-auto pb-1">
                       <div style={{ minWidth: timelineWidth }}>
-                        <div
-                          className="mb-2 grid text-center text-[10px] font-black text-toss-gray-tertiary"
-                          style={{ gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))` }}
-                        >
-                          {range.dates.map((date) => (
-                            <span
-                              key={formatDateKey(date)}
-                              className={cn(
-                                "rounded-full px-1 py-0.5",
-                                weekendTextClass(date),
-                                isSundayDate(date) ? "bg-rose-50" : "",
-                                isSaturdayDate(date) ? "bg-sky-50" : "",
-                                isSameDay(date, today) ? "bg-blue-50 text-toss-blue" : "",
-                              )}
-                            >
-                              {dateLabel(date, period)}
-                            </span>
-                          ))}
+                        <div className="mb-2">
+                          <DateAxis inset period={period} range={range} today={today} />
                         </div>
                         <div className="relative overflow-hidden rounded-[18px] bg-white ring-1 ring-toss-border" style={{ height: totalHeight }}>
-                          <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))` }}>
+                          <div
+                            className="absolute bottom-0 right-3 top-0 grid"
+                            style={{
+                              gridTemplateColumns: `repeat(${range.dates.length}, minmax(0, 1fr))`,
+                              left: SLOT_LABEL_WIDTH,
+                            }}
+                          >
                             {range.dates.map((date) => (
                               <div
                                 key={formatDateKey(date)}
@@ -540,8 +580,8 @@ export default function PeriodOccupancyInfographic({
                                   {slot.label}
                                 </div>
                                 <div
-                                  className="absolute left-[52px] right-3 overflow-hidden rounded-[14px] bg-emerald-50/70"
-                                  style={{ top, height: Math.max(SEGMENT_HEIGHT, height - SEGMENT_GAP) }}
+                                  className="absolute right-3 overflow-hidden rounded-[14px] bg-emerald-50/70"
+                                  style={{ left: SLOT_LABEL_WIDTH, top, height: Math.max(SEGMENT_HEIGHT, height - SEGMENT_GAP) }}
                                 >
                                   {packed.length === 0 ? (
                                     <div className="flex h-7 items-center justify-center rounded-full text-[10px] font-black text-emerald-700">
@@ -559,7 +599,7 @@ export default function PeriodOccupancyInfographic({
                                       <div
                                         key={segment.id}
                                         className={cn(
-                                          "absolute flex h-7 items-center overflow-hidden rounded-[10px] px-2 text-[10px] font-black text-white shadow-sm ring-1 ring-white/60",
+                                          "absolute flex h-8 items-center overflow-hidden rounded-[10px] px-2.5 text-[10px] font-black text-white shadow-sm ring-1 ring-white/60",
                                           segment.isClosure ? "bg-purple-500" : style.bar,
                                         )}
                                         style={{
@@ -567,10 +607,10 @@ export default function PeriodOccupancyInfographic({
                                           top: segmentTop,
                                           width: `${segmentWidth}%`,
                                         }}
-                                        title={`${segment.title} · ${segment.detail}`}
-                                        aria-label={`${slot.label} ${segment.title}, ${segment.detail}`}
+                                        title={`${segmentDateRange(segment, range)} · ${segment.startTime}-${segment.endTime} · ${segment.title} · ${segment.detail}`}
+                                        aria-label={`${slot.label} ${segmentDateRange(segment, range)} ${segment.startTime}-${segment.endTime} ${segment.title}, ${segment.detail}`}
                                       >
-                                        <span className="truncate">{segmentLabel(segment, width)}</span>
+                                        <span className="truncate">{segmentLabel(segment, width, range)}</span>
                                       </div>
                                     );
                                   })}

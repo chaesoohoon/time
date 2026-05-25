@@ -20,6 +20,7 @@ type Segment = {
   category: string;
   status: string;
   slotKeys: TimeSlotKey[];
+  times: string[];
   start: Date;
   end: Date;
   color: string;
@@ -45,6 +46,12 @@ type Lane = {
   gaps: Gap[];
   longestGap: Gap | null;
   currentOrNextGap: Gap | null;
+};
+
+type MonthBand = {
+  label: string;
+  left: number;
+  width: number;
 };
 
 const COURSE_COLORS = [
@@ -111,6 +118,22 @@ function positionInYear(start: Date, end: Date, yearStart: Date, yearEnd: Date) 
   const left = (leftDays / totalDays) * 100;
   const width = Math.max(1.4, (widthDays / totalDays) * 100);
   return { left, width: Math.min(width, 100 - left) };
+}
+
+function buildMonthBands(yearStart: Date, yearEnd: Date): MonthBand[] {
+  const year = yearStart.getFullYear();
+  return Array.from({ length: 12 }, (_, index) => {
+    const monthStart = new Date(year, index, 1);
+    const monthEnd = new Date(year, index + 1, 0);
+    const start = new Date(Math.max(startOfDay(monthStart).getTime(), startOfDay(yearStart).getTime()));
+    const end = new Date(Math.min(startOfDay(monthEnd).getTime(), startOfDay(yearEnd).getTime()));
+    const position = positionInYear(start, end, yearStart, yearEnd);
+    return {
+      label: `${index + 1}월`,
+      left: position.left,
+      width: position.width,
+    };
+  });
 }
 
 function packSegments(segments: Segment[]): PackedSegment[] {
@@ -210,6 +233,7 @@ function buildLanes(data: SheetData, mode: FocusMode, yearStart: Date, yearEnd: 
       if (existing) {
         existing.details = unique([...existing.details, detail]);
         existing.slotKeys = [...new Set([...existing.slotKeys, ...scheduleSlotKeys(schedule)])];
+        existing.times = unique([...existing.times, `${schedule.start_time}-${schedule.end_time}`]);
         return;
       }
 
@@ -220,6 +244,7 @@ function buildLanes(data: SheetData, mode: FocusMode, yearStart: Date, yearEnd: 
         category: course?.category || "기타",
         status: course?.status || schedule.status || "상태 미정",
         slotKeys: scheduleSlotKeys(schedule),
+        times: [`${schedule.start_time}-${schedule.end_time}`],
         start: range.start,
         end: range.end,
         color: courseColorMap.get(schedule.course_id) || COURSE_COLORS[0],
@@ -261,6 +286,40 @@ function rebuildLane(lane: Lane, segments: Segment[], yearStart: Date, yearEnd: 
   return { ...lane, segments, gaps, longestGap, currentOrNextGap };
 }
 
+function segmentRangeLabel(segment: Segment) {
+  if (formatDateKey(segment.start) === formatDateKey(segment.end)) return formatShortDate(segment.start);
+  return `${formatShortDate(segment.start)}-${formatShortDate(segment.end)}`;
+}
+
+function segmentTimeLabel(segment: Segment) {
+  return segment.times.length > 1 ? `${segment.times[0]} 외 ${segment.times.length - 1}` : segment.times[0] || "";
+}
+
+function annualSegmentLabel(segment: Segment, width: number) {
+  const range = segmentRangeLabel(segment);
+  const time = segmentTimeLabel(segment);
+  if (width < 4) return formatShortDate(segment.start);
+  if (width < 8) return range;
+  if (width < 16) return `${range} · ${time}`;
+  return `${range} · ${time} · ${segment.courseName}`;
+}
+
+function MonthAxis({ bands }: { bands: MonthBand[] }) {
+  return (
+    <div className="relative h-7 text-center text-[10px] font-black text-toss-gray-tertiary">
+      {bands.map((band) => (
+        <span
+          key={band.label}
+          className="absolute top-0 flex h-full items-center justify-center rounded-full bg-white/70 px-1"
+          style={{ left: `${band.left}%`, width: `${band.width}%` }}
+        >
+          {band.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function AnnualOccupancyInfographic({ data }: { data: SheetData }) {
   const [mode, setMode] = useState<FocusMode>("room");
   const [targetId, setTargetId] = useState("all");
@@ -270,6 +329,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
   const [query, setQuery] = useState("");
   const now = getKstNow();
   const year = getYearRange(now);
+  const monthBands = useMemo(() => buildMonthBands(year.start, year.end), [year.end, year.start]);
 
   const lanes = useMemo(() => buildLanes(data, mode, year.start, year.end, now), [data, mode, now, year.end, year.start]);
   const categories = useMemo(() => unique(data.courses.map((course) => course.category || "기타")), [data.courses]);
@@ -453,11 +513,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
           <div className="max-h-[760px] space-y-3 overflow-y-auto pr-1">
             <div className="hidden grid-cols-[220px_1fr] gap-4 px-3 text-xs font-black text-toss-gray-tertiary lg:grid">
               <span>{mode === "room" ? "강의실" : "강사"}</span>
-              <div className="grid grid-cols-12 text-center">
-                {Array.from({ length: 12 }, (_, index) => (
-                  <span key={index}>{index + 1}월</span>
-                ))}
-              </div>
+              <MonthAxis bands={monthBands} />
             </div>
             {visibleLanes.map((lane) => {
               const packedSegments = packSegments(lane.segments);
@@ -480,15 +536,20 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
 
                     <div className="overflow-x-auto pb-1">
                       <div className="min-w-[960px]">
-                        <div className="mb-2 grid grid-cols-12 text-center text-[10px] font-black text-toss-gray-tertiary">
-                          {Array.from({ length: 12 }, (_, index) => (
-                            <span key={index}>{index + 1}월</span>
-                          ))}
+                        <div className="mb-2">
+                          <MonthAxis bands={monthBands} />
                         </div>
                         <div className="relative overflow-hidden rounded-[18px] bg-white ring-1 ring-toss-border" style={{ height: timelineHeight }}>
-                          <div className="absolute inset-0 grid grid-cols-12">
-                            {Array.from({ length: 12 }, (_, index) => (
-                              <div key={index} className="border-r border-toss-border/70 last:border-r-0" />
+                          <div className="absolute inset-0">
+                            {monthBands.map((band, index) => (
+                              <div
+                                key={band.label}
+                                className={cn(
+                                  "absolute bottom-0 top-0 border-r border-toss-border/70 last:border-r-0",
+                                  index % 2 === 0 ? "bg-slate-50/50" : "bg-white",
+                                )}
+                                style={{ left: `${band.left}%`, width: `${band.width}%` }}
+                              />
                             ))}
                           </div>
 
@@ -526,20 +587,19 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
                           {packedSegments.map((segment) => {
                             const { left, width } = positionInYear(segment.start, segment.end, year.start, year.end);
                             const top = 84 + segment.row * 46;
-                            const label = width < 10 ? `${formatShortDate(segment.start)}-${formatShortDate(segment.end)}` : segment.courseName;
                             return (
                               <div
                                 key={segment.id}
-                                className="absolute flex h-8 items-center overflow-hidden rounded-[10px] px-3 text-[11px] font-black text-white shadow-sm ring-1 ring-white/50"
+                                className="absolute flex h-9 items-center overflow-hidden rounded-[11px] px-3 text-[11px] font-black text-white shadow-sm ring-1 ring-white/50"
                                 style={{
                                   left: `${left}%`,
                                   width: `${width}%`,
                                   top,
                                   backgroundColor: segment.color,
                                 }}
-                                title={`${segment.courseName} · ${formatDateKey(segment.start)}-${formatDateKey(segment.end)} · ${segment.details.join(", ")}`}
+                                title={`${segment.courseName} · ${segmentRangeLabel(segment)} · ${segment.times.join(", ")} · ${segment.details.join(", ")}`}
                               >
-                                <span className="truncate">{label}</span>
+                                <span className="truncate">{annualSegmentLabel(segment, width)}</span>
                               </div>
                             );
                           })}
@@ -548,7 +608,7 @@ export default function AnnualOccupancyInfographic({ data }: { data: SheetData }
                           {lane.segments.slice(0, 4).map((segment) => (
                             <span key={`${lane.id}-${segment.id}-caption`} className="inline-flex items-center gap-1.5 rounded-full bg-toss-bg px-2.5 py-1 text-[11px] font-black text-toss-gray-secondary">
                               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: segment.color }} />
-                              {formatShortDate(segment.start)}-{formatShortDate(segment.end)}
+                              {segmentRangeLabel(segment)} · {segmentTimeLabel(segment)}
                             </span>
                           ))}
                           {lane.segments.length > 4 ? (
