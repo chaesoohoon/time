@@ -45,6 +45,15 @@ import { aiBeforeUseChecklist, creditGuide } from "@/data/capcut-credit-guide";
 import { beatSyncGuide } from "@/data/capcut-beat-sync-guide";
 import { promptGuide } from "@/data/capcut-prompt-guide";
 import { aiPracticeExamples } from "@/data/capcut-ai-practice-examples";
+import {
+  capcutVisualAssets,
+  getVisualAsset,
+  getVisualAssetsForLesson,
+  practiceVisualAssets,
+  type PracticeVisualAsset,
+  type VisualAsset,
+} from "@/data/capcut-visual-assets";
+import { getPracticeExamplePack, type PracticeExample } from "@/data/capcut-practice-example-packs";
 
 type ActiveView =
   | LessonKey
@@ -60,7 +69,8 @@ type ActiveView =
   | "ai-credits"
   | "beat-sync"
   | "beat-markers"
-  | "ai-practice";
+  | "ai-practice"
+  | "image-prompts";
 
 type SavedState = {
   activeView?: ActiveView;
@@ -93,6 +103,7 @@ const sidebarItems: { key: ActiveView; label: string; icon: LucideIcon }[] = [
   { key: "beat-sync", label: "음악 비트 자동 편집", icon: ArrowRight },
   { key: "beat-markers", label: "자동 마커 / Beat Sync", icon: MousePointerClick },
   { key: "ai-practice", label: "AI 실습 예제 모음", icon: ClipboardCheck },
+  { key: "image-prompts", label: "수업용 이미지 프롬프트", icon: BookOpenCheck },
   { key: "shortcuts", label: "단축키 치트시트", icon: Keyboard },
   { key: "magic", label: "마법 기능", icon: WandSparkles },
   { key: "practice", label: "실습 예제", icon: ClipboardCheck },
@@ -189,7 +200,7 @@ export default function CapcutVisualLearningKit() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#111315] text-slate-100 lg:grid lg:grid-cols-[268px_minmax(0,1fr)]">
+      <div className="min-h-screen overflow-x-hidden bg-[#111315] text-slate-100 lg:grid lg:grid-cols-[268px_minmax(0,1fr)]">
         <Sidebar activeView={activeView} onSelectView={selectView} />
         <main className="min-w-0">
           <TopBar activeView={activeView} editMode={editMode} resetAll={resetAll} setEditMode={setEditMode} />
@@ -210,6 +221,7 @@ export default function CapcutVisualLearningKit() {
                     resetOverride={resetOverride}
                     updateOverride={updateOverride}
                   />
+                  <LessonVisualGallery lessonKey={activeLesson.key} onSelectView={selectView} />
                   {activeCourse ? (
                     <CourseDetailSections
                       checks={studentChecks}
@@ -1188,6 +1200,513 @@ function DayAiExpansion({ courseKey }: { courseKey: LessonKey }) {
   );
 }
 
+function LessonVisualGallery({ lessonKey, onSelectView }: { lessonKey: LessonKey; onSelectView: (view: ActiveView) => void }) {
+  const assets = getVisualAssetsForLesson(lessonKey);
+  if (!assets.length) return null;
+
+  return (
+    <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6 shadow-xl">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <SectionHeader
+          eyebrow="Visual First"
+          title="이미지로 먼저 이해하기"
+          description="텍스트를 읽기 전에 그림을 먼저 보면서 어디를 누르는지, 편집 전후가 어떻게 달라지는지 감을 잡습니다."
+        />
+        <button
+          type="button"
+          onClick={() => onSelectView("image-prompts")}
+          className="inline-flex w-fit shrink-0 items-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+        >
+          이미지 프롬프트 보기
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="mt-6 grid gap-4 xl:grid-cols-2">
+        {assets.map((asset) =>
+          asset.type === "before-after" ? (
+            <BeforeAfterVisual key={asset.id} asset={asset} />
+          ) : (
+            <VisualLessonCard key={asset.id} asset={asset} onSelectView={onSelectView} />
+          ),
+        )}
+      </div>
+    </section>
+  );
+}
+
+function VisualLessonCard({ asset, onSelectView }: { asset: VisualAsset; onSelectView?: (view: ActiveView) => void }) {
+  const targetView = getAssetTargetView(asset);
+
+  return (
+    <article className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+      <VisualAssetImage asset={asset} />
+      <div className="space-y-4 p-5">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">{asset.type}</p>
+          <h3 className="mt-2 text-2xl font-black text-white">{asset.title}</h3>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {asset.day ? <span className="rounded-xl bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950">Day {asset.day}</span> : null}
+          <span className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{asset.relatedSkill}</span>
+          <span className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-cyan-100 ring-1 ring-white/10">{asset.recommendedRatio}</span>
+        </div>
+        {asset.expectedResultDescription ? (
+          <p className="rounded-2xl bg-emerald-400/10 p-4 text-sm font-black leading-6 text-emerald-100 ring-1 ring-emerald-300/20">
+            {asset.expectedResultDescription}
+          </p>
+        ) : null}
+        {targetView && onSelectView ? (
+          <button
+            type="button"
+            onClick={() => onSelectView(targetView)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15"
+          >
+            관련 실습으로 이동
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function BeforeAfterVisual({ asset }: { asset: VisualAsset }) {
+  return (
+    <article className="rounded-3xl border border-white/10 bg-white/5 p-5">
+      <div className="mb-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">Before / After</p>
+        <h3 className="mt-2 text-2xl font-black text-white">{asset.title}</h3>
+        <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.description}</p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <VisualAssetImage asset={asset} label="Before" srcOverride={asset.beforeSrc ?? asset.src} />
+        <VisualAssetImage asset={asset} label="After" srcOverride={asset.afterSrc ?? asset.src} />
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-2xl bg-emerald-400/10 p-4 ring-1 ring-emerald-300/20">
+          <p className="text-sm font-black text-emerald-200">차이점</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-200">
+            {asset.expectedResultDescription ?? "편집 전에는 흐름이 어색하고, 편집 후에는 필요한 장면과 정보가 더 명확하게 보입니다."}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-cyan-400/10 p-4 ring-1 ring-cyan-300/20">
+          <p className="text-sm font-black text-cyan-200">학생 질문</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{asset.studentQuestion ?? "오른쪽 결과물이 더 보기 쉬운 이유는 무엇인가요?"}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function VisualAssetImage({
+  asset,
+  compact,
+  label,
+  srcOverride,
+}: {
+  asset: VisualAsset;
+  compact?: boolean;
+  label?: string;
+  srcOverride?: string;
+}) {
+  const src = srcOverride ?? asset.src;
+  const [imageState, setImageState] = useState<{ src: string; status: "loading" | "loaded" | "failed" }>({ src, status: "loading" });
+  const status = imageState.src === src ? imageState.status : "loading";
+
+  return (
+    <div className={cn("relative overflow-hidden rounded-2xl border border-white/10 bg-[#101214]", compact ? "min-h-48" : "min-h-64")}>
+      {label ? <span className="absolute left-3 top-3 z-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{label}</span> : null}
+      {status !== "loaded" ? <VisualAssetFallback asset={asset} compact={compact} /> : null}
+      <Image
+        src={src}
+        alt={asset.title}
+        fill
+        unoptimized
+        onError={() => setImageState({ src, status: "failed" })}
+        onLoad={() => setImageState({ src, status: "loaded" })}
+        className={cn(
+          "object-cover transition-opacity duration-300",
+          status === "loaded" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
+        )}
+      />
+    </div>
+  );
+}
+
+function VisualAssetFallback({ asset, compact = false }: { asset: VisualAsset; compact?: boolean }) {
+  return (
+    <div className={cn("flex min-h-64 flex-col justify-between gap-4 bg-[#121417] p-5", compact ? "min-h-48 p-4" : "")}>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950">이미지 준비 중</span>
+          <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-slate-200">{asset.recommendedRatio}</span>
+        </div>
+        <EnhancedFallbackDiagram asset={asset} />
+        <div>
+          <p className="text-sm font-black text-white">{asset.title}</p>
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-400">{asset.description}</p>
+        </div>
+      </div>
+      <details className="rounded-2xl bg-white/5 p-3">
+        <summary className="cursor-pointer text-sm font-black text-cyan-200">생성 프롬프트와 저장 위치</summary>
+        <p className="mt-3 rounded-xl bg-slate-950 p-3 text-xs font-bold leading-5 text-slate-200">{asset.imagePrompt}</p>
+        <p className="mt-3 text-xs font-black leading-5 text-amber-100">저장 파일명: {asset.saveFileName}</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-slate-400">사용 위치: {asset.usageLocation}</p>
+        <div className="mt-3">
+          <CopyPromptButton prompt={asset.imagePrompt} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function EnhancedFallbackDiagram({ asset }: { asset: VisualAsset }) {
+  if (asset.type === "before-after") {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniEditState title="Before" tone="rose" clips={["원본", "실수 장면", "원본", "남는 끝"]} />
+        <MiniEditState title="After" tone="emerald" clips={["필요 장면", "자막", "음악"]} />
+      </div>
+    );
+  }
+
+  if (asset.type === "flow" || asset.type === "ai") {
+    return (
+      <div className="space-y-3">
+        <MiniButtonRail steps={asset.type === "ai" ? ["AI 도구", "프롬프트", "생성", "타임라인"] : ["가져오기", "미디어", "드래그", "타임라인"]} />
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+          {["버튼 누르기", asset.type === "ai" ? "결과 고르기" : "자료 넣기", "타임라인 배치"].map((item, index) => (
+            <div key={item} className="contents">
+              <div className="rounded-2xl bg-white p-3 text-center text-slate-950">
+                <p className="text-xs font-black text-cyan-700">{index + 1}단계</p>
+                <p className="mt-1 text-sm font-black">{item}</p>
+              </div>
+              {index < 2 ? <ArrowRight className="mx-auto hidden h-5 w-5 text-cyan-300 sm:block" aria-hidden="true" /> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (asset.type === "layer") {
+    return (
+      <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr]">
+        <div className="relative min-h-40 rounded-2xl bg-slate-950 p-4 ring-1 ring-white/10">
+          {["자막 / 로고", "제품 이미지", "배경 영상"].map((item, index) => (
+            <div
+              key={item}
+              className={cn(
+                "absolute left-4 right-4 rounded-xl px-3 py-2 text-sm font-black text-slate-950 shadow-xl",
+                index === 0 ? "top-4 bg-amber-300" : index === 1 ? "top-16 bg-cyan-300" : "bottom-4 bg-emerald-300",
+              )}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+        <MiniButtonRail steps={["오버레이", "이미지 추가", "맨 위 레이어", "키프레임"]} vertical />
+      </div>
+    );
+  }
+
+  return <MiniCapCutInterface asset={asset} />;
+}
+
+function MiniCapCutInterface({ asset }: { asset: VisualAsset }) {
+  const steps = getMiniSteps(asset);
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-[#202326] text-[11px] text-slate-200 ring-1 ring-white/10">
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#111315] px-3 py-2">
+        <span className="font-black text-white">CapCut</span>
+        <span className="rounded-lg bg-cyan-400 px-2 py-1 font-black text-slate-950">내보내기</span>
+      </div>
+      <MiniButtonRail steps={steps} />
+      <div className="grid min-h-40 grid-cols-[0.9fr_1.15fr] gap-2 p-3 sm:grid-cols-[0.75fr_1.1fr_0.75fr]">
+        <div className="rounded-xl bg-[#2b2d30] p-2">
+          <p className="mb-2 font-black text-cyan-200">미디어</p>
+          <div className="grid h-24 place-items-center rounded-lg border border-dashed border-slate-500 bg-[#3a3d40] text-center">
+            <div>
+              <span className="mx-auto grid h-7 w-7 place-items-center rounded-full bg-cyan-400 text-sm font-black text-slate-950">+</span>
+              <p className="mt-1 font-black">가져오기</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-[#16181b] p-2">
+          <p className="mb-2 font-black text-slate-300">미리보기</p>
+          <div className="grid h-24 place-items-center rounded-lg bg-slate-950">
+            <div className="aspect-[9/16] h-20 rounded-lg bg-gradient-to-b from-cyan-400 to-slate-800 p-2 text-center shadow-inner">
+              <p className="mt-5 text-[10px] font-black text-white">완성 화면</p>
+            </div>
+          </div>
+        </div>
+        <div className="hidden rounded-xl bg-[#2b2d30] p-2 sm:block">
+          <p className="mb-2 font-black text-cyan-200">세부 정보</p>
+          {["위치", "크기", asset.relatedSkill].map((item) => (
+            <div key={item} className="mb-2 rounded-lg bg-white/10 px-2 py-1 font-black text-slate-300">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="border-t border-white/10 bg-[#191b1e] p-3">
+        <div className="mb-2 flex items-center justify-between font-black text-slate-400">
+          <span>타임라인</span>
+          <span>클립을 아래에 놓기</span>
+        </div>
+        <MiniTimeline clips={asset.type === "practice" ? ["영상", "자막", "음악"] : ["클립", "오버레이", "자막"]} />
+      </div>
+    </div>
+  );
+}
+
+function MiniButtonRail({ steps, vertical = false }: { steps: string[]; vertical?: boolean }) {
+  return (
+    <div className={cn("flex gap-2 overflow-x-auto bg-[#2a2d30] p-2", vertical ? "h-full flex-col overflow-visible rounded-2xl bg-slate-950" : "")}>
+      {steps.map((step, index) => (
+        <div key={`${step}-${index}`} className="flex shrink-0 items-center gap-2">
+          <span className={cn("rounded-xl px-3 py-2 text-xs font-black", index === 0 ? "bg-cyan-400 text-slate-950" : "bg-white/10 text-slate-100")}>
+            {step}
+          </span>
+          {index < steps.length - 1 && !vertical ? <ArrowRight className="h-3.5 w-3.5 text-cyan-200" aria-hidden="true" /> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniEditState({ clips, title, tone }: { clips: string[]; title: string; tone: "emerald" | "rose" }) {
+  return (
+    <div className={cn("rounded-2xl p-3 ring-1", tone === "rose" ? "bg-rose-300/15 ring-rose-300/20" : "bg-emerald-300/15 ring-emerald-300/20")}>
+      <p className={cn("text-xs font-black", tone === "rose" ? "text-rose-200" : "text-emerald-200")}>{title}</p>
+      <div className="mt-3 rounded-xl bg-slate-950 p-2">
+        <MiniTimeline clips={clips} compact tone={tone} />
+      </div>
+    </div>
+  );
+}
+
+function MiniTimeline({ clips, compact = false, tone = "emerald" }: { clips: string[]; compact?: boolean; tone?: "emerald" | "rose" }) {
+  const palette = tone === "rose" ? ["bg-cyan-400", "bg-rose-300", "bg-cyan-400", "bg-slate-500"] : ["bg-cyan-400", "bg-amber-300", "bg-emerald-400", "bg-violet-300"];
+
+  return (
+    <div className={cn("space-y-2", compact ? "" : "min-w-0")}>
+      <div className="grid grid-cols-[1fr_0.75fr_1fr] gap-1">
+        {clips.slice(0, 3).map((clip, index) => (
+          <span key={`${clip}-${index}`} className={cn("truncate rounded-lg px-2 py-2 text-[10px] font-black text-slate-950", palette[index % palette.length])}>
+            {clip}
+          </span>
+        ))}
+      </div>
+      {clips.length > 3 ? (
+        <div className="grid grid-cols-[0.8fr_1fr] gap-1">
+          {clips.slice(3).map((clip, index) => (
+            <span key={`${clip}-${index}`} className={cn("truncate rounded-lg px-2 py-2 text-[10px] font-black text-slate-950", palette[(index + 3) % palette.length])}>
+              {clip}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function getMiniSteps(asset: VisualAsset) {
+  const skill = `${asset.relatedSkill} ${asset.title}`;
+  if (skill.includes("자막")) return ["텍스트", "자동 자막", "스타일", "미리보기"];
+  if (skill.includes("오디오") || skill.includes("음악") || skill.includes("Beat")) return ["오디오", "Beat Sync", "마커", "클립 맞춤"];
+  if (skill.includes("오버레이") || skill.includes("키프레임") || skill.includes("Smart")) return ["오버레이", "배경 제거", "키프레임", "재생"];
+  if (skill.includes("AI")) return ["AI 도구", "프롬프트", "생성", "타임라인"];
+  if (skill.includes("내보내기") || skill.includes("최종")) return ["확인", "해상도", "내보내기", "저장"];
+  return ["미디어", "가져오기", "자르기", "미리보기"];
+}
+
+function PracticePreviewCard({ project, visual }: { project: PracticeProjectWithAi; visual: PracticeVisualAsset }) {
+  return (
+    <article className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <VisualAssetImage
+          asset={practiceVisualToAsset(visual, project.title)}
+          compact
+          srcOverride={project.previewImage ?? visual.previewImage}
+        />
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">완성 결과 미리보기</p>
+            <h3 className="mt-2 text-2xl font-black text-white">{project.title}</h3>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{project.expectedResultDescription ?? visual.expectedResultDescription}</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <MetaPill label="난이도" value={project.level} />
+            <MetaPill label="시간" value={project.time} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {project.skills.slice(0, 4).map((skill) => (
+              <span key={skill} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{skill}</span>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => document.getElementById(projectStepsId(project.title))?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-100"
+          >
+            시작하기
+            <ArrowDown className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <VisualAssetImage asset={practiceVisualToAsset(visual, `${project.title} 전`)} compact label="Before" srcOverride={project.beforeImage ?? visual.beforeImage} />
+        <VisualAssetImage asset={practiceVisualToAsset(visual, `${project.title} 후`)} compact label="After" srcOverride={project.afterImage ?? visual.afterImage} />
+      </div>
+    </article>
+  );
+}
+
+function MetaPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/10 p-3">
+      <p className="text-xs font-black text-cyan-200">{label}</p>
+      <p className="mt-1 text-sm font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function ImageAssetPrepBanner() {
+  const steps = [
+    "프롬프트 모음에서 필요한 이미지 프롬프트를 복사합니다.",
+    "GPT Image 2 또는 이미지 생성 도구에서 이미지를 생성합니다.",
+    "권장 파일명으로 저장합니다.",
+    "public/assets/capcut/ 폴더에 넣습니다.",
+    "사이트를 새로고침해서 이미지가 반영되었는지 확인합니다.",
+  ];
+
+  return (
+    <section className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-6">
+      <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Visual Assets</p>
+      <h2 className="mt-2 text-3xl font-black text-white">이미지 자료를 넣으면 수업 이해도가 크게 올라갑니다</h2>
+      <p className="mt-3 max-w-5xl text-base font-bold leading-7 text-slate-200">
+        이 사이트는 캡컷 PC 화면 캡처와 GPT Image 2로 만든 설명 이미지를 함께 사용할 때 가장 효과적입니다.
+        현재 이미지가 없다면 먼저 프롬프트 모음에서 필요한 이미지를 생성한 뒤 `public/assets/capcut/` 폴더에 저장하세요.
+      </p>
+      <ol className="mt-5 grid gap-3 xl:grid-cols-5">
+        {steps.map((step, index) => (
+          <li key={step} className="rounded-2xl bg-white p-4 text-slate-950">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-400 text-sm font-black">{index + 1}</span>
+            <p className="mt-3 text-sm font-black leading-6">{step}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function ImagePromptLibrary() {
+  const [filter, setFilter] = useState<"전체" | "Day 1" | "Day 2" | "Day 3" | "Day 4" | "Day 5" | "AI">("전체");
+  const filters: Array<typeof filter> = ["전체", "Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "AI"];
+  const visibleAssets = capcutVisualAssets.filter((asset) => {
+    if (filter === "전체") return true;
+    if (filter === "AI") return asset.type === "ai" || asset.relatedSkill.includes("AI") || asset.usageLocation.includes("AI");
+    return asset.day === Number(filter.replace("Day ", ""));
+  });
+
+  return (
+    <div className="space-y-5">
+      <ImageAssetPrepBanner />
+      <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6">
+        <SectionHeader
+          eyebrow="GPT Image Prompt"
+          title="수업용 이미지 생성 프롬프트"
+          description="이 프롬프트들은 캡컷 수업 자료에 사용할 설명 이미지, 실습 예제 이미지, 전/후 비교 이미지를 만들기 위한 것입니다."
+        />
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+          {filters.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setFilter(item)}
+              className={cn(
+                "shrink-0 rounded-2xl px-4 py-3 text-sm font-black transition",
+                filter === item ? "bg-cyan-400 text-slate-950" : "bg-white/5 text-slate-200 hover:bg-white/10",
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </section>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {visibleAssets.map((asset) => (
+          <article key={asset.id} className="rounded-3xl border border-white/10 bg-[#1b1d20] p-5">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-xl bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950">{asset.recommendedRatio}</span>
+              <span className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{asset.type}</span>
+              {asset.day ? <span className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-cyan-100 ring-1 ring-white/10">Day {asset.day}</span> : null}
+            </div>
+            <h3 className="mt-4 text-2xl font-black text-white">{asset.title}</h3>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.description}</p>
+            <div className="mt-4 rounded-2xl bg-white/5 p-4">
+              <p className="text-xs font-black text-cyan-200">저장 파일명</p>
+              <p className="mt-2 break-all text-sm font-black text-white">{asset.saveFileName}</p>
+              <p className="mt-3 text-xs font-black text-cyan-200">사용 위치</p>
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.usageLocation}</p>
+            </div>
+            <div className="mt-4 rounded-2xl bg-slate-950 p-4">
+              <p className="text-xs font-black text-cyan-200">생성 프롬프트</p>
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{asset.imagePrompt}</p>
+            </div>
+            <div className="mt-4">
+              <CopyPromptButton prompt={asset.imagePrompt} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CopyPromptButton({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = prompt;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={copyPrompt}
+        className="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+      >
+        프롬프트 복사하기
+        <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {copied ? (
+        <div className="fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-2xl">
+          프롬프트가 복사되었습니다
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function InfoCard({ children, eyebrow, title }: { children: ReactNode; eyebrow: string; title: string }) {
   return (
     <article className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6 shadow-xl">
@@ -1226,14 +1745,32 @@ function BulletList({ items, tone }: { items: string[]; tone: "amber" | "cyan" |
 }
 
 type PracticeProjectWithAi = PracticeProject & {
+  afterImage?: string;
   category?: string;
   compareQuestions?: string[];
+  expectedResultDescription?: string;
+  beforeImage?: string;
+  previewImage?: string;
   prompt?: string;
+  visualPrompt?: string;
 };
 
 function PracticeProjectCard({ project }: { project: PracticeProjectWithAi }) {
+  const visual = getPracticeVisualForProject(project);
+  const examplePack = getPracticeExamplePack(project.title);
+
   return (
     <InfoCard title={project.title} eyebrow="Practice Project">
+      {visual ? (
+        <div className="mb-5">
+          <PracticePreviewCard project={project} visual={visual} />
+        </div>
+      ) : null}
+      {examplePack.length ? (
+        <div className="mb-5">
+          <PracticeExamplePack examples={examplePack} />
+        </div>
+      ) : null}
       <div className="grid gap-4 2xl:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-3">
           {project.category ? <MetaLine label="분류" value={project.category} /> : null}
@@ -1245,7 +1782,9 @@ function PracticeProjectCard({ project }: { project: PracticeProjectWithAi }) {
         </div>
         <div className="space-y-4">
           <ProjectSection title="작업 조건" items={project.conditions} />
-          <ProjectSection title="단계별 작업 순서" items={project.steps} ordered />
+          <div id={projectStepsId(project.title)} className="scroll-mt-32">
+            <ProjectSection title="단계별 작업 순서" items={project.steps} ordered />
+          </div>
           <ProjectSection title="완성 기준" items={project.criteria} />
           <ProjectSection title="자주 하는 실수" items={project.mistakes} danger />
           {project.prompt ? (
@@ -1263,6 +1802,63 @@ function PracticeProjectCard({ project }: { project: PracticeProjectWithAi }) {
         </div>
       </div>
     </InfoCard>
+  );
+}
+
+function PracticeExamplePack({ examples }: { examples: PracticeExample[] }) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">Ready Examples</p>
+          <h3 className="mt-2 text-2xl font-black text-white">바로 써먹는 예제</h3>
+        </div>
+        <p className="max-w-xl text-sm font-bold leading-6 text-slate-300">주제, 재료, 누를 버튼, 완성 기준을 한 번에 보고 원하는 예제로 시작합니다.</p>
+      </div>
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        {examples.map((example) => (
+          <article key={example.id} className="rounded-3xl bg-[#101214] p-4 ring-1 ring-white/10">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-xl bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950">{example.timeBox}</span>
+              <span className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">예제</span>
+            </div>
+            <h4 className="mt-4 text-xl font-black text-white">{example.title}</h4>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{example.scenario}</p>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="rounded-2xl bg-white/5 p-3">
+                <p className="text-xs font-black text-cyan-200">준비물</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {example.materials.map((material) => (
+                    <span key={material} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-slate-200">
+                      {material}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-cyan-400/10 p-3 ring-1 ring-cyan-300/20">
+                <p className="text-xs font-black text-cyan-200">버튼처럼 눌러보기</p>
+                <div className="mt-2 overflow-hidden rounded-2xl ring-1 ring-white/10">
+                  <MiniButtonRail steps={example.buttonPath} />
+                </div>
+              </div>
+            </div>
+            {example.prompt ? (
+              <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 ring-1 ring-amber-300/20">
+                <p className="text-xs font-black text-amber-200">문구 / 프롬프트 예시</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{example.prompt}</p>
+              </div>
+            ) : null}
+            <div className="mt-3 rounded-2xl bg-emerald-400/10 p-3 ring-1 ring-emerald-300/20">
+              <p className="text-xs font-black text-emerald-200">완성 목표</p>
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{example.targetResult}</p>
+            </div>
+            <div className="mt-3">
+              <ProjectSection title="확인 포인트" items={example.checkpoints} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1527,8 +2123,54 @@ function isAiReferenceView(view: ActiveView) {
     view === "ai-credits" ||
     view === "beat-sync" ||
     view === "beat-markers" ||
-    view === "ai-practice"
+    view === "ai-practice" ||
+    view === "image-prompts"
   );
+}
+
+function getAssetTargetView(asset: VisualAsset): ActiveView | null {
+  if (asset.usageLocation.includes("AI 이미지")) return "ai-image";
+  if (asset.usageLocation.includes("AI 영상")) return "ai-video";
+  if (asset.relatedSkill.includes("Beat")) return "beat-sync";
+  if (asset.day) return `day-${asset.day}` as ActiveView;
+  if (asset.lessonKeys?.[0]) return asset.lessonKeys[0];
+  return null;
+}
+
+function projectStepsId(title: string) {
+  return `practice-steps-${title.replace(/\s+/g, "-").replace(/[^\w가-힣-]/g, "")}`;
+}
+
+function getPracticeVisualForProject(project: PracticeProjectWithAi) {
+  if (project.previewImage || project.visualPrompt || project.expectedResultDescription) {
+    return {
+      title: project.title,
+      previewImage: project.previewImage ?? "/assets/capcut/practice/custom-preview.png",
+      beforeImage: project.beforeImage ?? "/assets/capcut/before-after/custom-before.png",
+      afterImage: project.afterImage ?? project.previewImage ?? "/assets/capcut/before-after/custom-after.png",
+      visualPrompt: project.visualPrompt ?? project.prompt ?? "실습 결과 미리보기 이미지를 생성하세요.",
+      expectedResultDescription: project.expectedResultDescription ?? project.mission,
+    };
+  }
+
+  return practiceVisualAssets[project.title] ?? null;
+}
+
+function practiceVisualToAsset(visual: PracticeVisualAsset, title: string): VisualAsset {
+  return {
+    id: `practice-${title}`,
+    title,
+    type: "practice",
+    src: visual.previewImage,
+    fallback: "css-wireframe",
+    description: visual.expectedResultDescription,
+    imagePrompt: visual.visualPrompt,
+    relatedSkill: "실습 결과 미리보기",
+    usageLocation: `실습 예제: ${visual.title}`,
+    recommendedRatio: "9:16",
+    saveFileName: visual.previewImage.replace("/assets/capcut/", "public/assets/capcut/"),
+    expectedResultDescription: visual.expectedResultDescription,
+  };
 }
 
 function getPracticeCategory(project: PracticeProject) {
@@ -1551,6 +2193,8 @@ function FeatureMiniCard({ feature }: { feature: AiFeature }) {
 }
 
 function AiOverviewPage({ onSelectView }: { onSelectView: (view: ActiveView) => void }) {
+  const aiVisuals = ["ai-first-scene", "ai-video-before-after", "beat-sync-timeline"].map(getVisualAsset).filter(Boolean) as VisualAsset[];
+
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6">
@@ -1561,6 +2205,23 @@ function AiOverviewPage({ onSelectView }: { onSelectView: (view: ActiveView) => 
         />
         <div className="mt-5">
           <VersionNoticeBox />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6">
+        <SectionHeader
+          eyebrow="AI Visual Examples"
+          title="AI 기능을 그림으로 보기"
+          description="프롬프트에서 이미지가 만들어지는 과정, AI 초안을 사람이 고치는 전후 비교, 비트 편집 타임라인을 이미지 카드로 확인합니다."
+        />
+        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          {aiVisuals.map((asset) =>
+            asset.type === "before-after" ? (
+              <BeforeAfterVisual key={asset.id} asset={asset} />
+            ) : (
+              <VisualLessonCard key={asset.id} asset={asset} onSelectView={onSelectView} />
+            ),
+          )}
         </div>
       </section>
 
@@ -1640,6 +2301,8 @@ function AiFeatureBoard({
 }
 
 function AiFeatureDetailPage({ feature }: { feature: AiFeature }) {
+  const visual = getAiVisualForFeature(feature.id);
+
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6">
@@ -1656,6 +2319,14 @@ function AiFeatureDetailPage({ feature }: { feature: AiFeature }) {
           </div>
         </div>
       </section>
+
+      {visual ? (
+        visual.type === "before-after" ? (
+          <BeforeAfterVisual asset={visual} />
+        ) : (
+          <VisualLessonCard asset={visual} />
+        )
+      ) : null}
 
       <section className="grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
         <InfoCard title="바로 해볼 실습" eyebrow="Student Practice">
@@ -1699,6 +2370,16 @@ function FeatureButtonPath({ compact = false, feature }: { compact?: boolean; fe
       </div>
     </div>
   );
+}
+
+function getAiVisualForFeature(id: string) {
+  const map: Record<string, string> = {
+    "ai-image": "ai-first-scene",
+    "ai-video": "ai-video-generation-process",
+    "image-to-video": "day4-product-cardnews-preview",
+    "ai-design": "ai-first-scene",
+  };
+  return map[id] ? getVisualAsset(map[id]) : null;
 }
 
 function getFeaturePath(id: string) {
@@ -2005,6 +2686,7 @@ function ReferencePage({
   if (activeView === "ai-credits") return <AiCreditsPage />;
   if (activeView === "beat-sync" || activeView === "beat-markers") return <BeatSyncLesson />;
   if (activeView === "ai-practice") return <AiPracticeExamples />;
+  if (activeView === "image-prompts") return <ImagePromptLibrary />;
   const aiFeature = getAiFeatureByView(activeView);
   if (aiFeature) return <AiFeatureDetailPage feature={aiFeature} />;
   return <FinalChecklistPage finalChecks={finalChecks} finalProject={finalProject} onToggleFinal={onToggleFinal} updateFinalProject={updateFinalProject} />;
@@ -2058,6 +2740,7 @@ function PracticePage() {
   ];
   const filters = ["전체", "기본 편집", "자막 / 오디오", "오버레이 / 키프레임", "음악 비트", "AI 이미지", "AI 영상", "최종 프로젝트"];
   const visibleProjects = filter === "전체" ? projects : projects.filter((project) => project.category === filter);
+  const readyExampleCount = projects.reduce((total, project) => total + getPracticeExamplePack(project.title).length, 0);
 
   return (
     <div className="space-y-5">
@@ -2065,8 +2748,13 @@ function PracticePage() {
         <SectionHeader
           eyebrow="Practice Workbook"
           title="실습 예제 모음"
-          description="학생용 실습지처럼 바로 따라할 수 있도록 준비물, 조건, 순서, 완성 기준, AI 프롬프트, 비교 질문을 함께 넣었습니다."
+          description="학생용 실습지처럼 바로 따라할 수 있도록 준비물, 조건, 순서, 완성 기준, 완성 예시, 바로 써먹는 예제팩, AI 프롬프트를 함께 넣었습니다."
         />
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <MetaPill label="전체 과제" value={`${projects.length}개`} />
+          <MetaPill label="바로 써먹는 예제" value={`${readyExampleCount}개`} />
+          <MetaPill label="현재 보기" value={`${visibleProjects.length}개`} />
+        </div>
         <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
           {filters.map((item) => (
             <button
@@ -2136,7 +2824,13 @@ function RightReferencePanel({ activeView }: { activeView: ActiveView }) {
         <p className="text-sm font-black uppercase tracking-[0.18em]">Reference</p>
         <h2 className="mt-2 text-2xl font-black">{getReferenceTitle(activeView)}</h2>
       </div>
-      {isAiView ? (
+      {activeView === "image-prompts" ? (
+        <>
+          <PanelBlock title="이미지 넣는 순서" body="프롬프트를 복사해 이미지를 생성한 뒤 카드에 적힌 저장 파일명 그대로 public/assets/capcut 폴더에 넣으면 placeholder가 실제 이미지로 바뀝니다." />
+          <PanelBlock title="API 키 주의" body="프론트엔드에는 OpenAI API 키를 넣지 않습니다. 나중에 자동 생성 기능을 붙일 때는 서버 API 라우트에서 호출하고 결과 이미지만 저장해야 합니다." />
+        </>
+      ) : null}
+      {activeView === "image-prompts" ? null : isAiView ? (
         <>
           <VersionNoticeBox compact />
           <CreditUsagePanel compact />
@@ -2167,6 +2861,7 @@ function getReferenceTitle(view: ActiveView) {
     "beat-sync": "음악 비트 자동 편집",
     "beat-markers": "자동 마커 / Beat Sync",
     "ai-practice": "AI 실습 예제 모음",
+    "image-prompts": "수업용 이미지 생성 프롬프트",
   };
   return map[view] ?? "캡컷 학습";
 }
