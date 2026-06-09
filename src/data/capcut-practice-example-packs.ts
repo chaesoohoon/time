@@ -164,7 +164,7 @@ export const practiceExamplePacks: Record<string, PracticeExample[]> = {
       title: "수업 홍보 첫 화면",
       scenario: "AI 이미지로 밝은 수업 분위기의 첫 장면을 만들고 큰 제목을 얹습니다.",
       materials: ["수업 주제", "첫 장면 문구", "AI 이미지 2~4개"],
-      buttonPath: ["AI 이미지", "프롬프트 입력", "생성", "타임라인", "텍스트"],
+      buttonPath: ["AI 이미지", "입력 문구", "생성", "타임라인", "텍스트"],
       prompt: "밝은 컴퓨터 교육 공간, 영상편집을 배우는 초보자, 깔끔한 홍보 이미지, 세로형 쇼츠 첫 화면",
       targetResult: "첫 3초에 영상 주제가 바로 보이는 썸네일형 첫 장면",
       checkpoints: ["자막이 이미지보다 잘 읽힘", "이미지가 복잡하지 않음", "다음 장면과 연결됨"],

@@ -46,7 +46,6 @@ import { beatSyncGuide } from "@/data/capcut-beat-sync-guide";
 import { promptGuide } from "@/data/capcut-prompt-guide";
 import { aiPracticeExamples } from "@/data/capcut-ai-practice-examples";
 import {
-  capcutVisualAssets,
   getVisualAsset,
   getVisualAssetsForLesson,
   practiceVisualAssets,
@@ -69,8 +68,7 @@ type ActiveView =
   | "ai-credits"
   | "beat-sync"
   | "beat-markers"
-  | "ai-practice"
-  | "image-prompts";
+  | "ai-practice";
 
 type SavedState = {
   activeView?: ActiveView;
@@ -103,7 +101,6 @@ const sidebarItems: { key: ActiveView; label: string; icon: LucideIcon }[] = [
   { key: "beat-sync", label: "음악 비트 자동 편집", icon: ArrowRight },
   { key: "beat-markers", label: "자동 마커 / Beat Sync", icon: MousePointerClick },
   { key: "ai-practice", label: "AI 실습 예제 모음", icon: ClipboardCheck },
-  { key: "image-prompts", label: "수업용 이미지 프롬프트", icon: BookOpenCheck },
   { key: "shortcuts", label: "단축키 치트시트", icon: Keyboard },
   { key: "magic", label: "마법 기능", icon: WandSparkles },
   { key: "practice", label: "실습 예제", icon: ClipboardCheck },
@@ -131,7 +128,7 @@ export default function CapcutVisualLearningKit() {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as SavedState;
-        setActiveView(parsed.activeView ?? "map");
+        setActiveView(isKnownActiveView(parsed.activeView) ? parsed.activeView : "map");
         setSelectedHotspotId(parsed.selectedHotspotId ?? "import");
         setStudentChecks(parsed.studentChecks ?? {});
         setFinalChecks(parsed.finalChecks ?? {});
@@ -287,6 +284,10 @@ export default function CapcutVisualLearningKit() {
 
 function isLessonView(view: ActiveView): view is LessonKey {
   return view === "map" || view === "start" || view.startsWith("day-");
+}
+
+function isKnownActiveView(view: unknown): view is ActiveView {
+  return typeof view === "string" && sidebarItems.some((item) => item.key === view);
 }
 
 function getLessonHotspots(lesson: ScreenLesson | null) {
@@ -1206,21 +1207,11 @@ function LessonVisualGallery({ lessonKey, onSelectView }: { lessonKey: LessonKey
 
   return (
     <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6 shadow-xl">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <SectionHeader
-          eyebrow="Visual First"
-          title="이미지로 먼저 이해하기"
-          description="텍스트를 읽기 전에 그림을 먼저 보면서 어디를 누르는지, 편집 전후가 어떻게 달라지는지 감을 잡습니다."
-        />
-        <button
-          type="button"
-          onClick={() => onSelectView("image-prompts")}
-          className="inline-flex w-fit shrink-0 items-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
-        >
-          이미지 프롬프트 보기
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+      <SectionHeader
+        eyebrow="Visual First"
+        title="화면 예시로 먼저 이해하기"
+        description="텍스트 설명 전에 캡컷 화면 구조, 버튼 위치, 타임라인 변화를 그림처럼 먼저 봅니다."
+      />
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
         {assets.map((asset) =>
           asset.type === "before-after" ? (
@@ -1303,33 +1294,16 @@ function VisualAssetImage({
   asset,
   compact,
   label,
-  srcOverride,
 }: {
   asset: VisualAsset;
   compact?: boolean;
   label?: string;
   srcOverride?: string;
 }) {
-  const src = srcOverride ?? asset.src;
-  const [imageState, setImageState] = useState<{ src: string; status: "loading" | "loaded" | "failed" }>({ src, status: "loading" });
-  const status = imageState.src === src ? imageState.status : "loading";
-
   return (
     <div className={cn("relative overflow-hidden rounded-2xl border border-white/10 bg-[#101214]", compact ? "min-h-48" : "min-h-64")}>
       {label ? <span className="absolute left-3 top-3 z-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{label}</span> : null}
-      {status !== "loaded" ? <VisualAssetFallback asset={asset} compact={compact} /> : null}
-      <Image
-        src={src}
-        alt={asset.title}
-        fill
-        unoptimized
-        onError={() => setImageState({ src, status: "failed" })}
-        onLoad={() => setImageState({ src, status: "loaded" })}
-        className={cn(
-          "object-cover transition-opacity duration-300",
-          status === "loaded" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
-        )}
-      />
+      <VisualAssetFallback asset={asset} compact={compact} />
     </div>
   );
 }
@@ -1339,7 +1313,7 @@ function VisualAssetFallback({ asset, compact = false }: { asset: VisualAsset; c
     <div className={cn("flex min-h-64 flex-col justify-between gap-4 bg-[#121417] p-5", compact ? "min-h-48 p-4" : "")}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950">이미지 준비 중</span>
+          <span className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950">화면 예시</span>
           <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-slate-200">{asset.recommendedRatio}</span>
         </div>
         <EnhancedFallbackDiagram asset={asset} />
@@ -1348,15 +1322,6 @@ function VisualAssetFallback({ asset, compact = false }: { asset: VisualAsset; c
           <p className="mt-2 text-xs font-bold leading-5 text-slate-400">{asset.description}</p>
         </div>
       </div>
-      <details className="rounded-2xl bg-white/5 p-3">
-        <summary className="cursor-pointer text-sm font-black text-cyan-200">생성 프롬프트와 저장 위치</summary>
-        <p className="mt-3 rounded-xl bg-slate-950 p-3 text-xs font-bold leading-5 text-slate-200">{asset.imagePrompt}</p>
-        <p className="mt-3 text-xs font-black leading-5 text-amber-100">저장 파일명: {asset.saveFileName}</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-slate-400">사용 위치: {asset.usageLocation}</p>
-        <div className="mt-3">
-          <CopyPromptButton prompt={asset.imagePrompt} />
-        </div>
-      </details>
     </div>
   );
 }
@@ -1374,7 +1339,7 @@ function EnhancedFallbackDiagram({ asset }: { asset: VisualAsset }) {
   if (asset.type === "flow" || asset.type === "ai") {
     return (
       <div className="space-y-3">
-        <MiniButtonRail steps={asset.type === "ai" ? ["AI 도구", "프롬프트", "생성", "타임라인"] : ["가져오기", "미디어", "드래그", "타임라인"]} />
+        <MiniButtonRail steps={asset.type === "ai" ? ["AI 도구", "문구 입력", "생성", "타임라인"] : ["가져오기", "미디어", "드래그", "타임라인"]} />
         <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
           {["버튼 누르기", asset.type === "ai" ? "결과 고르기" : "자료 넣기", "타임라인 배치"].map((item, index) => (
             <div key={item} className="contents">
@@ -1518,7 +1483,7 @@ function getMiniSteps(asset: VisualAsset) {
   if (skill.includes("자막")) return ["텍스트", "자동 자막", "스타일", "미리보기"];
   if (skill.includes("오디오") || skill.includes("음악") || skill.includes("Beat")) return ["오디오", "Beat Sync", "마커", "클립 맞춤"];
   if (skill.includes("오버레이") || skill.includes("키프레임") || skill.includes("Smart")) return ["오버레이", "배경 제거", "키프레임", "재생"];
-  if (skill.includes("AI")) return ["AI 도구", "프롬프트", "생성", "타임라인"];
+  if (skill.includes("AI")) return ["AI 도구", "문구 입력", "생성", "타임라인"];
   if (skill.includes("내보내기") || skill.includes("최종")) return ["확인", "해상도", "내보내기", "저장"];
   return ["미디어", "가져오기", "자르기", "미리보기"];
 }
@@ -1574,139 +1539,6 @@ function MetaPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ImageAssetPrepBanner() {
-  const steps = [
-    "프롬프트 모음에서 필요한 이미지 프롬프트를 복사합니다.",
-    "GPT Image 2 또는 이미지 생성 도구에서 이미지를 생성합니다.",
-    "권장 파일명으로 저장합니다.",
-    "public/assets/capcut/ 폴더에 넣습니다.",
-    "사이트를 새로고침해서 이미지가 반영되었는지 확인합니다.",
-  ];
-
-  return (
-    <section className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-6">
-      <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Visual Assets</p>
-      <h2 className="mt-2 text-3xl font-black text-white">이미지 자료를 넣으면 수업 이해도가 크게 올라갑니다</h2>
-      <p className="mt-3 max-w-5xl text-base font-bold leading-7 text-slate-200">
-        이 사이트는 캡컷 PC 화면 캡처와 GPT Image 2로 만든 설명 이미지를 함께 사용할 때 가장 효과적입니다.
-        현재 이미지가 없다면 먼저 프롬프트 모음에서 필요한 이미지를 생성한 뒤 `public/assets/capcut/` 폴더에 저장하세요.
-      </p>
-      <ol className="mt-5 grid gap-3 xl:grid-cols-5">
-        {steps.map((step, index) => (
-          <li key={step} className="rounded-2xl bg-white p-4 text-slate-950">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-400 text-sm font-black">{index + 1}</span>
-            <p className="mt-3 text-sm font-black leading-6">{step}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function ImagePromptLibrary() {
-  const [filter, setFilter] = useState<"전체" | "Day 1" | "Day 2" | "Day 3" | "Day 4" | "Day 5" | "AI">("전체");
-  const filters: Array<typeof filter> = ["전체", "Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "AI"];
-  const visibleAssets = capcutVisualAssets.filter((asset) => {
-    if (filter === "전체") return true;
-    if (filter === "AI") return asset.type === "ai" || asset.relatedSkill.includes("AI") || asset.usageLocation.includes("AI");
-    return asset.day === Number(filter.replace("Day ", ""));
-  });
-
-  return (
-    <div className="space-y-5">
-      <ImageAssetPrepBanner />
-      <section className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6">
-        <SectionHeader
-          eyebrow="GPT Image Prompt"
-          title="수업용 이미지 생성 프롬프트"
-          description="이 프롬프트들은 캡컷 수업 자료에 사용할 설명 이미지, 실습 예제 이미지, 전/후 비교 이미지를 만들기 위한 것입니다."
-        />
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-          {filters.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setFilter(item)}
-              className={cn(
-                "shrink-0 rounded-2xl px-4 py-3 text-sm font-black transition",
-                filter === item ? "bg-cyan-400 text-slate-950" : "bg-white/5 text-slate-200 hover:bg-white/10",
-              )}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </section>
-      <div className="grid gap-4 xl:grid-cols-2">
-        {visibleAssets.map((asset) => (
-          <article key={asset.id} className="rounded-3xl border border-white/10 bg-[#1b1d20] p-5">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-xl bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950">{asset.recommendedRatio}</span>
-              <span className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-950">{asset.type}</span>
-              {asset.day ? <span className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-cyan-100 ring-1 ring-white/10">Day {asset.day}</span> : null}
-            </div>
-            <h3 className="mt-4 text-2xl font-black text-white">{asset.title}</h3>
-            <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.description}</p>
-            <div className="mt-4 rounded-2xl bg-white/5 p-4">
-              <p className="text-xs font-black text-cyan-200">저장 파일명</p>
-              <p className="mt-2 break-all text-sm font-black text-white">{asset.saveFileName}</p>
-              <p className="mt-3 text-xs font-black text-cyan-200">사용 위치</p>
-              <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.usageLocation}</p>
-            </div>
-            <div className="mt-4 rounded-2xl bg-slate-950 p-4">
-              <p className="text-xs font-black text-cyan-200">생성 프롬프트</p>
-              <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{asset.imagePrompt}</p>
-            </div>
-            <div className="mt-4">
-              <CopyPromptButton prompt={asset.imagePrompt} />
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CopyPromptButton({ prompt }: { prompt: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyPrompt = async () => {
-    try {
-      await navigator.clipboard.writeText(prompt);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = prompt;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      textarea.remove();
-    }
-
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={copyPrompt}
-        className="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
-      >
-        프롬프트 복사하기
-        <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
-      </button>
-      {copied ? (
-        <div className="fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-2xl">
-          프롬프트가 복사되었습니다
-        </div>
-      ) : null}
-    </>
-  );
-}
-
 function InfoCard({ children, eyebrow, title }: { children: ReactNode; eyebrow: string; title: string }) {
   return (
     <article className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6 shadow-xl">
@@ -1752,7 +1584,6 @@ type PracticeProjectWithAi = PracticeProject & {
   beforeImage?: string;
   previewImage?: string;
   prompt?: string;
-  visualPrompt?: string;
 };
 
 function PracticeProjectCard({ project }: { project: PracticeProjectWithAi }) {
@@ -1789,7 +1620,7 @@ function PracticeProjectCard({ project }: { project: PracticeProjectWithAi }) {
           <ProjectSection title="자주 하는 실수" items={project.mistakes} danger />
           {project.prompt ? (
             <div className="rounded-2xl bg-cyan-400/10 p-4 ring-1 ring-cyan-300/20">
-              <h4 className="text-base font-black text-cyan-200">AI 프롬프트 예시</h4>
+              <h4 className="text-base font-black text-cyan-200">AI 입력 문구 예시</h4>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{project.prompt}</p>
             </div>
           ) : null}
@@ -1844,7 +1675,7 @@ function PracticeExamplePack({ examples }: { examples: PracticeExample[] }) {
             </div>
             {example.prompt ? (
               <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 ring-1 ring-amber-300/20">
-                <p className="text-xs font-black text-amber-200">문구 / 프롬프트 예시</p>
+                <p className="text-xs font-black text-amber-200">문구 예시</p>
                 <p className="mt-2 text-sm font-bold leading-6 text-slate-200">{example.prompt}</p>
               </div>
             ) : null}
@@ -2123,14 +1954,13 @@ function isAiReferenceView(view: ActiveView) {
     view === "ai-credits" ||
     view === "beat-sync" ||
     view === "beat-markers" ||
-    view === "ai-practice" ||
-    view === "image-prompts"
+    view === "ai-practice"
   );
 }
 
 function getAssetTargetView(asset: VisualAsset): ActiveView | null {
-  if (asset.usageLocation.includes("AI 이미지")) return "ai-image";
-  if (asset.usageLocation.includes("AI 영상")) return "ai-video";
+  if (asset.id.includes("ai-image") || asset.id === "ai-first-scene") return "ai-image";
+  if (asset.id.includes("ai-video")) return "ai-video";
   if (asset.relatedSkill.includes("Beat")) return "beat-sync";
   if (asset.day) return `day-${asset.day}` as ActiveView;
   if (asset.lessonKeys?.[0]) return asset.lessonKeys[0];
@@ -2142,13 +1972,12 @@ function projectStepsId(title: string) {
 }
 
 function getPracticeVisualForProject(project: PracticeProjectWithAi) {
-  if (project.previewImage || project.visualPrompt || project.expectedResultDescription) {
+  if (project.previewImage || project.expectedResultDescription) {
     return {
       title: project.title,
       previewImage: project.previewImage ?? "/assets/capcut/practice/custom-preview.png",
       beforeImage: project.beforeImage ?? "/assets/capcut/before-after/custom-before.png",
       afterImage: project.afterImage ?? project.previewImage ?? "/assets/capcut/before-after/custom-after.png",
-      visualPrompt: project.visualPrompt ?? project.prompt ?? "실습 결과 미리보기 이미지를 생성하세요.",
       expectedResultDescription: project.expectedResultDescription ?? project.mission,
     };
   }
@@ -2164,11 +1993,8 @@ function practiceVisualToAsset(visual: PracticeVisualAsset, title: string): Visu
     src: visual.previewImage,
     fallback: "css-wireframe",
     description: visual.expectedResultDescription,
-    imagePrompt: visual.visualPrompt,
     relatedSkill: "실습 결과 미리보기",
-    usageLocation: `실습 예제: ${visual.title}`,
     recommendedRatio: "9:16",
-    saveFileName: visual.previewImage.replace("/assets/capcut/", "public/assets/capcut/"),
     expectedResultDescription: visual.expectedResultDescription,
   };
 }
@@ -2212,7 +2038,7 @@ function AiOverviewPage({ onSelectView }: { onSelectView: (view: ActiveView) => 
         <SectionHeader
           eyebrow="AI Visual Examples"
           title="AI 기능을 그림으로 보기"
-          description="프롬프트에서 이미지가 만들어지는 과정, AI 초안을 사람이 고치는 전후 비교, 비트 편집 타임라인을 이미지 카드로 확인합니다."
+          description="AI 입력 문구에서 결과가 만들어지는 과정, AI 초안을 사람이 고치는 전후 비교, 비트 편집 타임라인을 화면 예시로 확인합니다."
         />
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {aiVisuals.map((asset) =>
@@ -2384,8 +2210,8 @@ function getAiVisualForFeature(id: string) {
 
 function getFeaturePath(id: string) {
   const map: Record<string, string[]> = {
-    "ai-image": ["미디어", "AI 미디어", "AI 이미지", "프롬프트 입력", "생성"],
-    "ai-video": ["AI 도구", "AI 영상", "프롬프트 입력", "생성", "타임라인 수정"],
+    "ai-image": ["미디어", "AI 미디어", "AI 이미지", "문구 입력", "생성"],
+    "ai-video": ["AI 도구", "AI 영상", "문구 입력", "생성", "타임라인 수정"],
     "image-to-video": ["미디어", "이미지 선택", "이미지→영상", "움직임 생성", "타임라인 배치"],
     "ai-design": ["AI 도구", "AI Design", "썸네일", "문구 입력", "생성"],
     "text-to-speech": ["텍스트", "텍스트 음성 변환", "목소리 선택", "생성"],
@@ -2435,7 +2261,7 @@ function AiInterfaceMockup({ feature }: { feature: AiFeature }) {
         </div>
         <div className="grid gap-4 p-4 lg:grid-rows-[auto_1fr_auto]">
           <div className="rounded-2xl bg-white p-4 text-slate-950">
-            <p className="text-sm font-black text-cyan-700">프롬프트 / 설정</p>
+            <p className="text-sm font-black text-cyan-700">입력 문구 / 설정</p>
             <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{feature.prompt ?? feature.practice}</p>
             <button type="button" className="mt-3 rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">
               {path[path.length - 1]}
@@ -2619,7 +2445,7 @@ function BeatSyncLesson() {
 function AiPromptGuide({ prompt }: { prompt?: string }) {
   return (
     <article className="rounded-3xl border border-white/10 bg-[#1b1d20] p-6 shadow-xl">
-      <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Prompt</p>
+      <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">입력 문구</p>
       <h2 className="mt-2 text-2xl font-black text-white">{promptGuide.title}</h2>
       <p className="mt-3 text-sm font-bold leading-6 text-slate-300">{promptGuide.description}</p>
       <div className="mt-5 flex flex-wrap gap-2">
@@ -2631,11 +2457,11 @@ function AiPromptGuide({ prompt }: { prompt?: string }) {
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl bg-rose-400/10 p-4 ring-1 ring-rose-300/20">
-          <p className="text-sm font-black text-rose-200">아쉬운 프롬프트</p>
+          <p className="text-sm font-black text-rose-200">아쉬운 입력 문구</p>
           <p className="mt-2 text-base font-black leading-7 text-slate-200">{promptGuide.badPrompt}</p>
         </div>
         <div className="rounded-2xl bg-emerald-400/10 p-4 ring-1 ring-emerald-300/20">
-          <p className="text-sm font-black text-emerald-200">좋은 프롬프트</p>
+          <p className="text-sm font-black text-emerald-200">좋은 입력 문구</p>
           <p className="mt-2 text-base font-black leading-7 text-slate-200">{prompt ?? promptGuide.goodPrompt}</p>
         </div>
       </div>
@@ -2686,7 +2512,6 @@ function ReferencePage({
   if (activeView === "ai-credits") return <AiCreditsPage />;
   if (activeView === "beat-sync" || activeView === "beat-markers") return <BeatSyncLesson />;
   if (activeView === "ai-practice") return <AiPracticeExamples />;
-  if (activeView === "image-prompts") return <ImagePromptLibrary />;
   const aiFeature = getAiFeatureByView(activeView);
   if (aiFeature) return <AiFeatureDetailPage feature={aiFeature} />;
   return <FinalChecklistPage finalChecks={finalChecks} finalProject={finalProject} onToggleFinal={onToggleFinal} updateFinalProject={updateFinalProject} />;
@@ -2748,7 +2573,7 @@ function PracticePage() {
         <SectionHeader
           eyebrow="Practice Workbook"
           title="실습 예제 모음"
-          description="학생용 실습지처럼 바로 따라할 수 있도록 준비물, 조건, 순서, 완성 기준, 완성 예시, 바로 써먹는 예제팩, AI 프롬프트를 함께 넣었습니다."
+          description="학생용 실습지처럼 바로 따라할 수 있도록 준비물, 조건, 순서, 완성 기준, 완성 예시, 바로 써먹는 예제팩을 함께 넣었습니다."
         />
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <MetaPill label="전체 과제" value={`${projects.length}개`} />
@@ -2824,13 +2649,7 @@ function RightReferencePanel({ activeView }: { activeView: ActiveView }) {
         <p className="text-sm font-black uppercase tracking-[0.18em]">Reference</p>
         <h2 className="mt-2 text-2xl font-black">{getReferenceTitle(activeView)}</h2>
       </div>
-      {activeView === "image-prompts" ? (
-        <>
-          <PanelBlock title="이미지 넣는 순서" body="프롬프트를 복사해 이미지를 생성한 뒤 카드에 적힌 저장 파일명 그대로 public/assets/capcut 폴더에 넣으면 placeholder가 실제 이미지로 바뀝니다." />
-          <PanelBlock title="API 키 주의" body="프론트엔드에는 OpenAI API 키를 넣지 않습니다. 나중에 자동 생성 기능을 붙일 때는 서버 API 라우트에서 호출하고 결과 이미지만 저장해야 합니다." />
-        </>
-      ) : null}
-      {activeView === "image-prompts" ? null : isAiView ? (
+      {isAiView ? (
         <>
           <VersionNoticeBox compact />
           <CreditUsagePanel compact />
@@ -2861,7 +2680,6 @@ function getReferenceTitle(view: ActiveView) {
     "beat-sync": "음악 비트 자동 편집",
     "beat-markers": "자동 마커 / Beat Sync",
     "ai-practice": "AI 실습 예제 모음",
-    "image-prompts": "수업용 이미지 생성 프롬프트",
   };
   return map[view] ?? "캡컷 학습";
 }

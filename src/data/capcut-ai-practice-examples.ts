@@ -8,7 +8,6 @@ export type AiPracticeProject = PracticeProject & {
   expectedResultDescription?: string;
   previewImage?: string;
   prompt?: string;
-  visualPrompt?: string;
 };
 
 export const aiPracticeExamples: AiPracticeProject[] = [
@@ -18,7 +17,7 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     level: "초급~중급",
     time: "40분",
     files: ["홍보할 주제 1개", "첫 장면 문구 1개", "참고 이미지 또는 분위기 키워드"],
-    skills: ["AI 이미지 생성", "텍스트 프롬프트", "썸네일형 첫 장면", "자막"],
+    skills: ["AI 이미지 생성", "텍스트 입력 문구", "썸네일형 첫 장면", "자막"],
     mission: "AI 이미지 생성으로 쇼츠 첫 장면이나 썸네일 느낌의 장면을 만들고 영상 편집에 활용합니다.",
     conditions: [
       "AI 이미지 2~4개 생성",
@@ -31,7 +30,7 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     steps: [
       "영상 주제를 정합니다.",
       "첫 장면에 넣을 문구를 정합니다.",
-      "AI 이미지 생성 기능에서 프롬프트를 입력합니다.",
+      "AI 이미지 생성 기능에서 입력 문구를 작성합니다.",
       "2~4개의 이미지를 생성해 비교합니다.",
       "가장 주제와 잘 맞는 이미지를 선택합니다.",
       "이미지를 타임라인 첫 부분에 배치합니다.",
@@ -48,9 +47,9 @@ export const aiPracticeExamples: AiPracticeProject[] = [
       "키프레임 움직임이 자연스러움",
       "다음 장면으로 연결이 어색하지 않음",
     ],
-    mistakes: ["이미지가 너무 복잡해 자막이 안 보임", "프롬프트가 짧아 원하는 분위기가 나오지 않음", "생성 이미지를 그대로 오래 보여줘 지루함"],
+    mistakes: ["이미지가 너무 복잡해 자막이 안 보임", "입력 문구가 짧아 원하는 분위기가 나오지 않음", "생성 이미지를 그대로 오래 보여줘 지루함"],
     variation: "같은 주제로 밝고 친근한 스타일, 전문적인 광고 스타일, 강한 후킹 썸네일 스타일 3가지를 비교합니다.",
-    feedback: ["첫 장면에서 주제가 바로 보이는가", "자막이 이미지보다 잘 읽히는가", "프롬프트 개선 흔적이 있는가"],
+    feedback: ["첫 장면에서 주제가 바로 보이는가", "자막이 이미지보다 잘 읽히는가", "입력 문구를 개선한 흔적이 있는가"],
   },
   {
     title: "AI 영상 생성 후 직접 편집하기",
@@ -167,8 +166,6 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     previewImage: "/assets/capcut/practice/ai-design-thumbnail-preview.png",
     beforeImage: "/assets/capcut/before-after/plain-first-scene.png",
     afterImage: "/assets/capcut/practice/ai-design-thumbnail-preview.png",
-    visualPrompt:
-      "AI Design으로 만든 쇼츠 썸네일 전후 비교 이미지. 왼쪽은 평범한 첫 장면, 오른쪽은 큰 제목과 보조 문구가 잘 읽히는 교육 홍보 썸네일형 첫 장면.",
     expectedResultDescription: "AI Design으로 만든 썸네일 이미지를 영상 첫 장면에 넣어 주제가 한눈에 보이게 만듭니다.",
     criteria: [
       "제목이 가장 먼저 읽힘",
@@ -209,8 +206,6 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     previewImage: "/assets/capcut/practice/auto-caption-fix-preview.png",
     beforeImage: "/assets/capcut/before-after/caption-bad.png",
     afterImage: "/assets/capcut/practice/auto-caption-fix-preview.png",
-    visualPrompt:
-      "자동 자막 수정 전후 비교 이미지. 왼쪽은 오타가 있고 긴 자막이 화면을 가리는 상태, 오른쪽은 오타가 수정되고 핵심 단어만 강조된 읽기 쉬운 자막.",
     expectedResultDescription: "AI가 만든 자동 자막을 그대로 쓰지 않고 사람이 읽기 쉽게 다듬는 연습입니다.",
     criteria: [
       "오타가 수정됨",
@@ -251,8 +246,6 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     previewImage: "/assets/capcut/practice/tts-narration-preview.png",
     beforeImage: "/assets/capcut/before-after/no-narration-before.png",
     afterImage: "/assets/capcut/practice/tts-narration-preview.png",
-    visualPrompt:
-      "AI 음성 내레이션 쇼츠 완성 예시 이미지. 사진 클립, AI 음성 트랙, 자막 트랙, 낮은 배경음악이 정리된 캡컷 스타일 타임라인.",
     expectedResultDescription: "녹음 없이도 AI 음성, 자막, 사진을 맞춰 정보 전달 쇼츠를 완성합니다.",
     criteria: [
       "AI 음성이 자연스럽게 들림",
@@ -293,8 +286,6 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     previewImage: "/assets/capcut/practice/smart-cutout-person-preview.png",
     beforeImage: "/assets/capcut/before-after/smart-cutout-before.png",
     afterImage: "/assets/capcut/practice/smart-cutout-person-preview.png",
-    visualPrompt:
-      "Smart Cutout 인물 합성 전후 비교 이미지. 왼쪽은 복잡한 배경의 인물 영상, 오른쪽은 배경 제거 후 깔끔한 교육 배경 위에 인물과 이름표가 합성된 모습.",
     expectedResultDescription: "배경 제거 후 새 배경과 자막을 더해 소개 영상처럼 보이는 합성 장면을 만듭니다.",
     criteria: [
       "인물 테두리가 크게 깨지지 않음",
@@ -335,8 +326,6 @@ export const aiPracticeExamples: AiPracticeProject[] = [
     previewImage: "/assets/capcut/practice/motion-tracking-name-tag-preview.png",
     beforeImage: "/assets/capcut/before-after/no-tracking-before.png",
     afterImage: "/assets/capcut/practice/motion-tracking-name-tag-preview.png",
-    visualPrompt:
-      "모션 트래킹 이름표 전후 비교 이미지. 왼쪽은 움직이는 인물 영상에 설명이 없는 상태, 오른쪽은 이름표가 얼굴 근처를 따라다니는 교육용 다이어그램.",
     expectedResultDescription: "움직이는 대상에 이름표나 화살표가 따라가도록 만들어 강조 포인트를 분명하게 보여줍니다.",
     criteria: [
       "트래킹 대상이 분명함",
