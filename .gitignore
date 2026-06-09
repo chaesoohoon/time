@@ -51,3 +51,5 @@ __pycache__/
 
 # local design verification captures
 .figma-dashboard-board*.png
+
+.vercel
