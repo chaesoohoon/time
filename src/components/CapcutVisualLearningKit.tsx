@@ -1212,7 +1212,7 @@ function LessonVisualGallery({ lessonKey, onSelectView }: { lessonKey: LessonKey
         title="화면 예시로 먼저 이해하기"
         description="텍스트 설명 전에 캡컷 화면 구조, 버튼 위치, 타임라인 변화를 그림처럼 먼저 봅니다."
       />
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
+      <div className="mt-6 grid gap-4 2xl:grid-cols-2">
         {assets.map((asset) =>
           asset.type === "before-after" ? (
             <BeforeAfterVisual key={asset.id} asset={asset} />
@@ -1270,11 +1270,10 @@ function BeforeAfterVisual({ asset }: { asset: VisualAsset }) {
         <h3 className="mt-2 text-2xl font-black text-white">{asset.title}</h3>
         <p className="mt-2 text-sm font-bold leading-6 text-slate-300">{asset.description}</p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <VisualAssetImage asset={asset} label="Before" srcOverride={asset.beforeSrc ?? asset.src} />
-        <VisualAssetImage asset={asset} label="After" srcOverride={asset.afterSrc ?? asset.src} />
+      <div className="rounded-2xl border border-white/10 bg-[#101214] p-4">
+        <EnhancedFallbackDiagram asset={asset} />
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
+      <div className="mt-4 grid gap-3 2xl:grid-cols-[1fr_1fr]">
         <div className="rounded-2xl bg-emerald-400/10 p-4 ring-1 ring-emerald-300/20">
           <p className="text-sm font-black text-emerald-200">차이점</p>
           <p className="mt-2 text-sm font-bold leading-6 text-slate-200">
@@ -1317,7 +1316,7 @@ function VisualAssetFallback({ asset, compact = false }: { asset: VisualAsset; c
           <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-slate-200">{asset.recommendedRatio}</span>
         </div>
         <EnhancedFallbackDiagram asset={asset} />
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-black text-white">{asset.title}</p>
           <p className="mt-2 text-xs font-bold leading-5 text-slate-400">{asset.description}</p>
         </div>
@@ -1340,14 +1339,11 @@ function EnhancedFallbackDiagram({ asset }: { asset: VisualAsset }) {
     return (
       <div className="space-y-3">
         <MiniButtonRail steps={asset.type === "ai" ? ["AI 도구", "문구 입력", "생성", "타임라인"] : ["가져오기", "미디어", "드래그", "타임라인"]} />
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+        <div className="grid gap-2 sm:grid-cols-3">
           {["버튼 누르기", asset.type === "ai" ? "결과 고르기" : "자료 넣기", "타임라인 배치"].map((item, index) => (
-            <div key={item} className="contents">
-              <div className="rounded-2xl bg-white p-3 text-center text-slate-950">
-                <p className="text-xs font-black text-cyan-700">{index + 1}단계</p>
-                <p className="mt-1 text-sm font-black">{item}</p>
-              </div>
-              {index < 2 ? <ArrowRight className="mx-auto hidden h-5 w-5 text-cyan-300 sm:block" aria-hidden="true" /> : null}
+            <div key={item} className="rounded-2xl bg-white p-3 text-center text-slate-950">
+              <p className="text-xs font-black text-cyan-700">{index + 1}단계</p>
+              <p className="mt-1 break-keep text-sm font-black leading-5">{item}</p>
             </div>
           ))}
         </div>
@@ -1383,13 +1379,13 @@ function MiniCapCutInterface({ asset }: { asset: VisualAsset }) {
   const steps = getMiniSteps(asset);
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-[#202326] text-[11px] text-slate-200 ring-1 ring-white/10">
+    <div className="rounded-2xl bg-[#202326] text-[11px] text-slate-200 ring-1 ring-white/10">
       <div className="flex items-center justify-between border-b border-white/10 bg-[#111315] px-3 py-2">
         <span className="font-black text-white">CapCut</span>
         <span className="rounded-lg bg-cyan-400 px-2 py-1 font-black text-slate-950">내보내기</span>
       </div>
       <MiniButtonRail steps={steps} />
-      <div className="grid min-h-40 grid-cols-[0.9fr_1.15fr] gap-2 p-3 sm:grid-cols-[0.75fr_1.1fr_0.75fr]">
+      <div className="grid min-h-40 gap-2 p-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))" }}>
         <div className="rounded-xl bg-[#2b2d30] p-2">
           <p className="mb-2 font-black text-cyan-200">미디어</p>
           <div className="grid h-24 place-items-center rounded-lg border border-dashed border-slate-500 bg-[#3a3d40] text-center">
@@ -1407,17 +1403,17 @@ function MiniCapCutInterface({ asset }: { asset: VisualAsset }) {
             </div>
           </div>
         </div>
-        <div className="hidden rounded-xl bg-[#2b2d30] p-2 sm:block">
+        <div className="rounded-xl bg-[#2b2d30] p-2">
           <p className="mb-2 font-black text-cyan-200">세부 정보</p>
           {["위치", "크기", asset.relatedSkill].map((item) => (
-            <div key={item} className="mb-2 rounded-lg bg-white/10 px-2 py-1 font-black text-slate-300">
+            <div key={item} className="mb-2 break-keep rounded-lg bg-white/10 px-2 py-1 font-black leading-4 text-slate-300">
               {item}
             </div>
           ))}
         </div>
       </div>
       <div className="border-t border-white/10 bg-[#191b1e] p-3">
-        <div className="mb-2 flex items-center justify-between font-black text-slate-400">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 font-black text-slate-400">
           <span>타임라인</span>
           <span>클립을 아래에 놓기</span>
         </div>
@@ -1429,13 +1425,22 @@ function MiniCapCutInterface({ asset }: { asset: VisualAsset }) {
 
 function MiniButtonRail({ steps, vertical = false }: { steps: string[]; vertical?: boolean }) {
   return (
-    <div className={cn("flex gap-2 overflow-x-auto bg-[#2a2d30] p-2", vertical ? "h-full flex-col overflow-visible rounded-2xl bg-slate-950" : "")}>
+    <div
+      className={cn("grid gap-2 bg-[#2a2d30] p-2", vertical ? "h-full grid-cols-1 rounded-2xl bg-slate-950" : "")}
+      style={vertical ? undefined : { gridTemplateColumns: "repeat(auto-fit, minmax(82px, 1fr))" }}
+    >
       {steps.map((step, index) => (
-        <div key={`${step}-${index}`} className="flex shrink-0 items-center gap-2">
-          <span className={cn("rounded-xl px-3 py-2 text-xs font-black", index === 0 ? "bg-cyan-400 text-slate-950" : "bg-white/10 text-slate-100")}>
+        <div
+          key={`${step}-${index}`}
+          className={cn(
+            "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2 text-center text-xs font-black leading-4",
+            index === 0 ? "bg-cyan-400 text-slate-950" : "bg-white/10 text-slate-100",
+          )}
+        >
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-black/15 text-[10px]">{index + 1}</span>
+          <span className="min-w-0 break-keep">
             {step}
           </span>
-          {index < steps.length - 1 && !vertical ? <ArrowRight className="h-3.5 w-3.5 text-cyan-200" aria-hidden="true" /> : null}
         </div>
       ))}
     </div>
@@ -1457,23 +1462,18 @@ function MiniTimeline({ clips, compact = false, tone = "emerald" }: { clips: str
   const palette = tone === "rose" ? ["bg-cyan-400", "bg-rose-300", "bg-cyan-400", "bg-slate-500"] : ["bg-cyan-400", "bg-amber-300", "bg-emerald-400", "bg-violet-300"];
 
   return (
-    <div className={cn("space-y-2", compact ? "" : "min-w-0")}>
-      <div className="grid grid-cols-[1fr_0.75fr_1fr] gap-1">
-        {clips.slice(0, 3).map((clip, index) => (
-          <span key={`${clip}-${index}`} className={cn("truncate rounded-lg px-2 py-2 text-[10px] font-black text-slate-950", palette[index % palette.length])}>
-            {clip}
-          </span>
-        ))}
-      </div>
-      {clips.length > 3 ? (
-        <div className="grid grid-cols-[0.8fr_1fr] gap-1">
-          {clips.slice(3).map((clip, index) => (
-            <span key={`${clip}-${index}`} className={cn("truncate rounded-lg px-2 py-2 text-[10px] font-black text-slate-950", palette[(index + 3) % palette.length])}>
-              {clip}
-            </span>
-          ))}
-        </div>
-      ) : null}
+    <div
+      className={cn("grid gap-1", compact ? "" : "min-w-0")}
+      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(58px, 1fr))" }}
+    >
+      {clips.map((clip, index) => (
+        <span
+          key={`${clip}-${index}`}
+          className={cn("grid min-h-10 place-items-center break-keep rounded-lg px-2 py-2 text-center text-[10px] font-black leading-4 text-slate-950", palette[index % palette.length])}
+        >
+          {clip}
+        </span>
+      ))}
     </div>
   );
 }
@@ -2040,7 +2040,7 @@ function AiOverviewPage({ onSelectView }: { onSelectView: (view: ActiveView) => 
           title="AI 기능을 그림으로 보기"
           description="AI 입력 문구에서 결과가 만들어지는 과정, AI 초안을 사람이 고치는 전후 비교, 비트 편집 타임라인을 화면 예시로 확인합니다."
         />
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+        <div className="mt-6 grid gap-4 2xl:grid-cols-2">
           {aiVisuals.map((asset) =>
             asset.type === "before-after" ? (
               <BeforeAfterVisual key={asset.id} asset={asset} />
